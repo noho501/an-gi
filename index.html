@@ -3,143 +3,157 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="Ăn Gì? – Tìm món ăn theo phong cách Tinder. Vuốt để chọn món bạn thích!" />
+  <meta name="description" content="Ăn Gì? – Bộ chọn món ăn kiểu Tinder, lọc nhanh và vuốt mượt như ứng dụng di động." />
   <meta name="theme-color" content="#ff6b6b" />
-
-  <!-- Open Graph -->
-  <meta property="og:title"       content="Ăn Gì? 🍜" />
-  <meta property="og:description" content="Tìm món ăn ngon chỉ trong 10 giây." />
-  <meta property="og:type"        content="website" />
-
-  <!-- PWA -->
+  <meta property="og:title" content="Ăn Gì? 🍜" />
+  <meta property="og:description" content="Chọn món nhanh hơn với bộ lọc gọn, vuốt mượt và lịch sử rõ ràng." />
+  <meta property="og:type" content="website" />
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-
-  <!-- Styles -->
   <link rel="stylesheet" href="css/style.css" />
-
   <title>Ăn Gì? 🍜</title>
 </head>
 <body>
   <div id="app">
+    <p id="app-status" class="sr-only" aria-live="polite"></p>
 
-    <!-- ═══════════════════════════════════════════════
-         HOME SCREEN
-         ═══════════════════════════════════════════════ -->
     <section id="screen-home" class="screen active" aria-label="Màn hình chào">
-
       <header class="top-bar">
-        <a href="#" class="logo" aria-label="Ăn Gì?">
+        <a href="#" class="logo" aria-label="Về trang chủ">
           <img src="assets/logo.svg" alt="Ăn Gì logo" width="36" height="36" />
           <span class="logo-text">Ăn Gì?</span>
         </a>
-        <button id="theme-toggle" aria-label="Đổi giao diện sáng/tối">🌙</button>
+        <button id="theme-toggle" aria-label="Đổi giao diện sáng tối">🌙</button>
       </header>
 
       <div class="home-hero">
         <div class="greeting-icon" id="greeting-icon" aria-hidden="true">🍳</div>
-        <h1 class="greeting-title"  id="greeting-title">Chào buổi sáng</h1>
-        <p  class="greeting-subtitle" id="greeting-subtitle">Hôm nay bạn muốn ăn gì?</p>
+        <h1 class="greeting-title" id="greeting-title">Chào buổi sáng</h1>
+        <p class="greeting-subtitle" id="greeting-subtitle">Chọn món thật nhanh với vài cú chạm.</p>
       </div>
 
       <div class="home-cta">
-        <button id="btn-start" class="btn-primary" aria-label="Bắt đầu chọn món">
-          Bắt đầu 🚀
-        </button>
+        <button id="btn-start" class="btn-primary" aria-label="Bắt đầu chọn món">Bắt đầu 🚀</button>
       </div>
-
     </section>
 
-    <!-- ═══════════════════════════════════════════════
-         STEP 1 – CATEGORY SELECTION
-         ═══════════════════════════════════════════════ -->
-    <section id="screen-step1" class="screen" aria-label="Chọn loại món">
-
+    <section id="screen-step1" class="screen" aria-label="Chọn danh mục món ăn" aria-hidden="true">
       <header class="top-bar">
-        <a href="#" class="logo" aria-label="Ăn Gì?">
+        <a href="#" class="logo" aria-label="Về trang chủ">
           <img src="assets/logo.svg" alt="Ăn Gì logo" width="36" height="36" />
           <span class="logo-text">Ăn Gì?</span>
         </a>
-        <div style="width:44px"></div><!-- spacer keeps title centered -->
+        <div class="top-bar-spacer" aria-hidden="true"></div>
       </header>
 
       <div class="step-header">
         <h2 class="step-title">Bạn đang muốn…</h2>
-        <p class="step-subtitle">Chọn một loại để bắt đầu</p>
+        <p id="category-hint" class="step-subtitle">Chọn một danh mục để bắt đầu.</p>
       </div>
 
       <div class="category-grid" role="list">
-
-        <button class="category-card" data-category="Ăn no" role="listitem"
-                aria-label="Ăn no – Cơm bún phở...">
+        <button class="category-card" data-category="Ăn no" role="listitem" aria-label="Ăn no">
           <span class="category-icon" aria-hidden="true">🍚</span>
           <span class="category-label">Ăn no</span>
         </button>
-
-        <button class="category-card" data-category="Ăn nhẹ" role="listitem"
-                aria-label="Ăn nhẹ – Bánh mì, cháo...">
+        <button class="category-card" data-category="Ăn nhẹ" role="listitem" aria-label="Ăn nhẹ">
           <span class="category-icon" aria-hidden="true">🥪</span>
           <span class="category-label">Ăn nhẹ</span>
         </button>
-
-        <button class="category-card" data-category="Ăn vặt" role="listitem"
-                aria-label="Ăn vặt – Bánh tráng, cá viên...">
+        <button class="category-card" data-category="Ăn vặt" role="listitem" aria-label="Ăn vặt">
           <span class="category-icon" aria-hidden="true">🍟</span>
           <span class="category-label">Ăn vặt</span>
         </button>
-
-        <button class="category-card" data-category="Đồ uống" role="listitem"
-                aria-label="Đồ uống – Trà sữa, cà phê...">
+        <button class="category-card" data-category="Đồ uống" role="listitem" aria-label="Đồ uống">
           <span class="category-icon" aria-hidden="true">🥤</span>
           <span class="category-label">Đồ uống</span>
         </button>
-
       </div>
-
     </section>
 
-    <!-- ═══════════════════════════════════════════════
-         SWIPE SCREEN
-         ═══════════════════════════════════════════════ -->
-    <section id="screen-swipe" class="screen" aria-label="Màn hình vuốt chọn món">
-
-      <header class="swipe-header">
-        <button class="btn-back" id="btn-back" aria-label="Quay lại">←</button>
-        <span class="swipe-title">Chọn món</span>
-        <div style="width:44px"></div><!-- spacer -->
+    <section id="screen-questions" class="screen" aria-label="Trả lời nhanh để lọc món" aria-hidden="true">
+      <header class="screen-header">
+        <button id="btn-question-back" class="icon-btn" aria-label="Quay lại câu trước">←</button>
+        <div class="screen-header__center">
+          <span id="question-progress" class="screen-header__eyebrow">Câu 1/2</span>
+          <h2 id="question-title" class="screen-header__title">Bạn thích kiểu nào?</h2>
+        </div>
+        <div class="top-bar-spacer" aria-hidden="true"></div>
       </header>
 
-      <!-- Style filter chips -->
-      <div id="filter-chips" role="group" aria-label="Lọc theo kiểu món">
-        <button class="chip active" data-style="Món nước" aria-pressed="true">🍜 Món nước</button>
-        <button class="chip active" data-style="Món khô"  aria-pressed="true">🍛 Món khô</button>
+      <div class="question-panel">
+        <p id="question-subtitle" class="question-subtitle">Trả lời nhanh để lọc món chuẩn hơn.</p>
+        <div id="question-options" class="question-options" role="list"></div>
       </div>
 
-      <!-- Card stack -->
+      <div class="question-footer">
+        <button id="btn-question-next" class="btn-primary" disabled>Tiếp tục</button>
+      </div>
+    </section>
+
+    <section id="screen-swipe" class="screen" aria-label="Vuốt chọn món" aria-hidden="true">
+      <header class="screen-header">
+        <button class="icon-btn" id="btn-back" aria-label="Quay lại chỉnh bộ lọc">←</button>
+        <div class="screen-header__center">
+          <span id="swipe-count" class="screen-header__eyebrow">1/10</span>
+          <h2 id="swipe-title" class="screen-header__title">Chọn món</h2>
+          <p id="swipe-subtitle" class="screen-header__caption">Đang chuẩn bị món cho bạn</p>
+        </div>
+        <button class="icon-btn" id="btn-history" aria-label="Xem lịch sử">🕘</button>
+      </header>
+
+      <div id="swipe-filter-summary" class="summary-row" aria-label="Bộ lọc hiện tại"></div>
+
       <div id="card-container" aria-live="polite" aria-label="Thẻ món ăn"></div>
 
+      <div class="swipe-toolbar">
+        <button id="btn-restart" class="btn-secondary">Làm lại bộ lọc</button>
+        <button id="btn-shuffle" class="btn-secondary">Xáo lại</button>
+      </div>
     </section>
 
-    <!-- ═══════════════════════════════════════════════
-         END SCREEN
-         ═══════════════════════════════════════════════ -->
-    <section id="screen-end" class="screen" aria-label="Hết món">
+    <section id="screen-history" class="screen" aria-label="Lịch sử món ăn" aria-hidden="true">
+      <header class="screen-header">
+        <button class="icon-btn" id="btn-history-back" aria-label="Quay lại">←</button>
+        <div class="screen-header__center">
+          <span class="screen-header__eyebrow">Lưu lại</span>
+          <h2 class="screen-header__title">Lịch sử & yêu thích</h2>
+        </div>
+        <div class="top-bar-spacer" aria-hidden="true"></div>
+      </header>
+
+      <div class="history-section">
+        <h3 class="history-section__title">❤️ Đã thích</h3>
+        <div id="history-liked" class="history-list"></div>
+      </div>
+
+      <div class="history-section">
+        <h3 class="history-section__title">🕘 Đã xem</h3>
+        <div id="history-viewed" class="history-list"></div>
+      </div>
+
+      <div id="history-empty" class="history-empty">
+        <div class="history-empty__icon" aria-hidden="true">🍽️</div>
+        <p>Chưa có món nào trong lịch sử của bạn.</p>
+      </div>
+    </section>
+
+    <section id="screen-end" class="screen" aria-label="Kết thúc danh sách" aria-hidden="true">
       <div class="end-icon" aria-hidden="true">🎉</div>
       <div>
-        <h2 class="end-title">Hết món rồi!</h2>
-        <p  class="end-subtitle">Bạn đã xem hết danh sách.<br>Vuốt lại hoặc đổi loại nhé!</p>
+        <h2 id="end-title" class="end-title">Hết món rồi!</h2>
+        <p id="end-subtitle" class="end-subtitle">Bạn đã xem hết danh sách phù hợp.</p>
       </div>
       <div class="end-actions">
-        <button id="btn-replay"    class="btn-primary"    aria-label="Chọn lại loại món">Chơi lại</button>
-        <button id="btn-reshuffle" class="btn-secondary"  aria-label="Xáo trộn lại các món">Xáo trộn lại</button>
+        <button id="btn-replay" class="btn-primary">Làm lại bộ lọc</button>
+        <button id="btn-reshuffle" class="btn-secondary">Xáo lại</button>
+        <button id="btn-end-filters" class="btn-secondary">Đổi danh mục</button>
+        <button id="btn-end-history" class="btn-secondary">Xem lịch sử</button>
       </div>
     </section>
+  </div>
 
-  </div><!-- /#app -->
-
-  <!-- ═══════════════════════════════════════════════
-       FOOD DETAIL BOTTOM SHEET
-       ═══════════════════════════════════════════════ -->
   <div id="detail-overlay" aria-hidden="true"></div>
 
   <div id="detail-sheet" role="dialog" aria-modal="true" aria-label="Chi tiết món ăn">
@@ -154,7 +168,7 @@
 
     <div class="sheet-body">
       <h2 id="detail-name"></h2>
-      <p  id="detail-desc"></p>
+      <p id="detail-desc"></p>
 
       <div class="sheet-stats">
         <div class="stat-card">
@@ -182,10 +196,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════
-       SCRIPTS  (ES6 modules – no build step needed)
-       ═══════════════════════════════════════════════ -->
   <script type="module" src="js/app.js"></script>
-
 </body>
 </html>
