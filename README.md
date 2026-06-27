@@ -13,11 +13,12 @@
 |---|---|
 | 🕐 Time-aware greeting | Morning / Lunch / Dinner / Late-night messages |
 | 🍚 4 food categories | Ăn no · Ăn nhẹ · Ăn vặt · Đồ uống |
-| 💧 Style filters | Toggle Món nước / Món khô instantly |
+| ⚡ Fast question flow | Each category asks up to 2 quick questions before loading cards |
 | 👆 Tinder-style swipe | Swipe right to ❤️ like, swipe left to ✕ skip |
+| 🗂 Better stack & history | Reused 3-card stack, restart/shuffle controls, liked/history screens |
 | 📖 Food detail sheet | Ingredients, calories, price in a bottom sheet |
 | 🌙 Dark / Light mode | Follows system preference, manually toggleable |
-| 💾 Persistence | Liked foods, history, filters saved in LocalStorage |
+| 💾 Persistence | Liked foods, history, current category and filter answers restore after refresh |
 | ♿ Accessible | ARIA labels, keyboard navigation, large touch targets |
 | 📱 PWA ready | Installable, offline-capable icon, manifest included |
 | 🚀 No build step | Plain HTML + CSS + Vanilla JS ES6 modules |
@@ -37,9 +38,10 @@
 │   └── style.css       ← All styles (glassmorphism, dark mode, animations)
 │
 ├── js/
-│   ├── app.js          ← Main orchestrator, screen routing
+│   ├── app.js          ← Main orchestrator, screen routing, deck state
 │   ├── foodData.js     ← ~100 Vietnamese food objects (API-ready)
-│   ├── filter.js       ← Category & style filter logic
+│   ├── filter.js       ← Question config + isolated filtering logic
+│   ├── foodVisuals.js  ← SVG card artwork + image preloading
 │   ├── tinder.js       ← Pointer/touch swipe mechanics
 │   └── storage.js      ← LocalStorage persistence layer
 │
