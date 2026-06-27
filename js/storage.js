@@ -1,92 +1,81 @@
-/**
- * storage.js
- * LocalStorage persistence layer for Ăn Gì?
- */
-
 const KEYS = {
-  LIKED:    'angi_liked',
-  HISTORY:  'angi_history',
-  CATEGORY: 'angi_category',
-  STYLES:   'angi_styles',
+  LIKED: 'angi_liked',
+  HISTORY: 'angi_history',
+  SESSION: 'angi_session',
+  THEME: 'angi_theme',
 };
 
-// ─── Liked Foods ──────────────────────────────────────────────────────────────
+const MAX_HISTORY_ITEMS = 60;
 
-/** @returns {number[]} array of liked food IDs */
 export function getLiked() {
-  return _readJSON(KEYS.LIKED, []);
+  return readJSON(KEYS.LIKED, []);
 }
 
-/** @param {number} id */
-export function addLiked(id) {
-  const list = getLiked();
-  if (!list.includes(id)) {
-    list.push(id);
-    _writeJSON(KEYS.LIKED, list);
-  }
-}
-
-/** @param {number} id */
-export function removeLiked(id) {
-  const list = getLiked().filter((x) => x !== id);
-  _writeJSON(KEYS.LIKED, list);
-}
-
-/** @param {number} id @returns {boolean} */
 export function isLiked(id) {
   return getLiked().includes(id);
 }
 
-// ─── View History ─────────────────────────────────────────────────────────────
-
-/** @returns {number[]} array of viewed food IDs (most recent last) */
-export function getHistory() {
-  return _readJSON(KEYS.HISTORY, []);
+export function addLiked(id) {
+  const next = dedupeRecent(getLiked(), id);
+  writeJSON(KEYS.LIKED, next);
+  return next;
 }
 
-/** @param {number} id */
+export function removeLiked(id) {
+  const next = getLiked().filter((entry) => entry !== id);
+  writeJSON(KEYS.LIKED, next);
+  return next;
+}
+
+export function toggleLiked(id) {
+  return isLiked(id) ? removeLiked(id) : addLiked(id);
+}
+
+export function getHistory() {
+  return readJSON(KEYS.HISTORY, []);
+}
+
 export function addHistory(id) {
-  const list = getHistory();
-  if (!list.includes(id)) {
-    list.push(id);
-    _writeJSON(KEYS.HISTORY, list);
-  }
+  const next = dedupeRecent(getHistory(), id).slice(0, MAX_HISTORY_ITEMS);
+  writeJSON(KEYS.HISTORY, next);
+  return next;
 }
 
 export function clearHistory() {
   localStorage.removeItem(KEYS.HISTORY);
 }
 
-// ─── Selected Category ────────────────────────────────────────────────────────
-
-/** @returns {string|null} */
-export function getCategory() {
-  return localStorage.getItem(KEYS.CATEGORY);
+export function getSession() {
+  return readJSON(KEYS.SESSION, null);
 }
 
-/** @param {string} category */
-export function setCategory(category) {
-  localStorage.setItem(KEYS.CATEGORY, category);
+export function setSession(session) {
+  writeJSON(KEYS.SESSION, session);
 }
 
-// ─── Active Styles ────────────────────────────────────────────────────────────
-
-const ALL_STYLES = ['Món nước', 'Món khô'];
-
-/** @returns {string[]} */
-export function getStyles() {
-  const saved = _readJSON(KEYS.STYLES, null);
-  return saved && saved.length ? saved : [...ALL_STYLES];
+export function clearSession() {
+  localStorage.removeItem(KEYS.SESSION);
 }
 
-/** @param {string[]} styles */
-export function setStyles(styles) {
-  _writeJSON(KEYS.STYLES, styles);
+export function getTheme() {
+  return localStorage.getItem(KEYS.THEME);
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+export function setTheme(theme) {
+  try {
+    localStorage.setItem(KEYS.THEME, theme);
+  } catch {
+    return null;
+  }
 
-function _readJSON(key, fallback) {
+  return theme;
+}
+
+function dedupeRecent(items, id) {
+  return [id, ...items.filter((entry) => entry !== id)];
+}
+
+function readJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
     return raw !== null ? JSON.parse(raw) : fallback;
@@ -95,10 +84,11 @@ function _readJSON(key, fallback) {
   }
 }
 
-function _writeJSON(key, value) {
+function writeJSON(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    // Quota exceeded or private mode — fail silently
+    return false;
   }
 }
