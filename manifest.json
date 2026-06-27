@@ -1,0 +1,21 @@
+{
+  "name": "Ăn Gì?",
+  "short_name": "Ăn Gì?",
+  "description": "Tìm món ăn ngon theo phong cách Tinder. Vuốt để chọn!",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff5f0",
+  "theme_color": "#ff6b6b",
+  "lang": "vi",
+  "categories": ["food", "lifestyle"],
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": []
+}
