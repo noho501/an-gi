@@ -67,7 +67,6 @@ const refs = {
   swipeContainer: qs('#card-container'),
   swipeClose: qs('#btn-swipe-close'),
   historyButton: qs('#btn-history'),
-  restartButton: qs('#btn-restart'),
   shuffleButton: qs('#btn-shuffle'),
   historyBack: qs('#btn-history-back'),
   historyLiked: qs('#history-liked'),
@@ -75,7 +74,6 @@ const refs = {
   historyEmpty: qs('#history-empty'),
   endTitle: qs('#end-title'),
   endSubtitle: qs('#end-subtitle'),
-  replayButton: qs('#btn-replay'),
   reshuffleButton: qs('#btn-reshuffle'),
   endHistoryButton: qs('#btn-end-history'),
   endFiltersButton: qs('#btn-end-filters'),
@@ -133,11 +131,9 @@ function bindStaticEvents() {
   refs.swipeBack.addEventListener('click', handleSwipeBack);
   refs.swipeClose.addEventListener('click', handleSwipeClose);
   refs.historyButton.addEventListener('click', () => openHistory('screen-swipe'));
-  refs.restartButton.addEventListener('click', () => showQuestions(0));
-  refs.shuffleButton.addEventListener('click', reshuffleCurrentDeck);
+  refs.shuffleButton.addEventListener('click', handleAnotherSuggestion);
   refs.historyBack.addEventListener('click', closeHistory);
-  refs.replayButton.addEventListener('click', () => showQuestions(0));
-  refs.reshuffleButton.addEventListener('click', handleEndShuffle);
+  refs.reshuffleButton.addEventListener('click', handleAnotherSuggestion);
   refs.endHistoryButton.addEventListener('click', () => openHistory('screen-end'));
   refs.endFiltersButton.addEventListener('click', () => showScreen('screen-step1', { focus: '.category-card' }));
 
@@ -147,6 +143,12 @@ function bindStaticEvents() {
   refs.historyViewed.addEventListener('keydown', handleHistoryKeydown);
 
   refs.detailOverlay.addEventListener('click', closeDetail);
+  refs.detailSheet.addEventListener('click', (event) => {
+    if (event.target.closest('#detail-close')) {
+      event.preventDefault();
+      closeDetail();
+    }
+  });
   refs.detailClose.addEventListener('click', closeDetail);
   refs.detailLike.addEventListener('click', () => {
     if (!state.detailFoodId) return;
@@ -452,6 +454,26 @@ function reshuffleCurrentDeck() {
   rebuildDeck(true);
 }
 
+function handleAnotherSuggestion() {
+  if (state.currentScreen === 'screen-end') {
+    if (state.endMode === 'empty') {
+      showScreen('screen-step1', { focus: '.category-card' });
+      return;
+    }
+
+    reshuffleCurrentDeck();
+    return;
+  }
+
+  if (!state.currentCategory || !state.filteredIds.length) return;
+  if (state.deckCursor >= state.filteredIds.length) {
+    showEnd('done');
+    return;
+  }
+
+  advanceDeck('left');
+}
+
 function renderSwipeScreen() {
   state.endMode = 'done';
   renderSwipeHeader();
@@ -666,17 +688,15 @@ function showEnd(mode) {
   if (mode === 'empty') {
     refs.endTitle.textContent = `Chưa có món hợp ${mealPeriod.shortLabel.toLowerCase()}`;
     refs.endSubtitle.innerHTML = 'Đổi khung giờ, chỉnh câu trả lời hoặc chọn danh mục khác để ra món sát hơn.';
-    refs.replayButton.textContent = 'Chỉnh lại câu trả lời';
     refs.reshuffleButton.textContent = 'Đổi danh mục';
   } else {
     refs.endTitle.textContent = 'Hết món rồi!';
-    refs.endSubtitle.innerHTML = `Bạn đã vuốt hết danh sách hợp ${mealPeriod.label.toLowerCase()}.<br>Xáo lại hoặc đổi bộ lọc để chọn tiếp.`;
-    refs.replayButton.textContent = 'Làm lại bộ lọc';
-    refs.reshuffleButton.textContent = 'Xáo lại';
+    refs.endSubtitle.innerHTML = `Bạn đã vuốt hết danh sách hợp ${mealPeriod.label.toLowerCase()}.<br>Món khác hoặc đổi bộ lọc để chọn tiếp.`;
+    refs.reshuffleButton.textContent = 'Món khác';
   }
 
   renderHistoryLists();
-  showScreen('screen-end', { focus: '#btn-replay' });
+  showScreen('screen-end', { focus: '#btn-reshuffle' });
   persistSession('screen-end');
 }
 

@@ -543,7 +543,7 @@ ul {
 #screen-swipe {
   position: relative;
   min-height: 100dvh;
-  padding: 0 20px 20px;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -561,7 +561,7 @@ ul {
   min-height: 320px;
   overflow: hidden;
   display: block;
-  padding: 8px 0 16px;
+  padding: 8px 0 calc(88px + env(safe-area-inset-bottom, 0px));
 }
 
 .food-card {
@@ -805,8 +805,12 @@ ul {
   display: flex;
   gap: 10px;
   justify-content: center;
-  padding-top: 8px;
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
+  margin-top: auto;
+  background: linear-gradient(180deg, transparent 0%, var(--surface) 30%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .history-section {
