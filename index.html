@@ -17,9 +17,6 @@
 <body>
   <div id="app">
     <p id="app-status" class="sr-only" aria-live="polite"></p>
-    <div class="meal-period-dock" aria-label="Chọn khung giờ ăn">
-      <div id="meal-period-selector" class="meal-period-selector" role="tablist" aria-label="Khung giờ ăn"></div>
-    </div>
 
     <section id="screen-home" class="screen active" aria-label="Màn hình chào">
       <header class="top-bar">
@@ -27,7 +24,10 @@
           <img src="assets/logo.svg" alt="Ăn Gì logo" width="36" height="36" />
           <span class="logo-text">Ăn Gì?</span>
         </a>
-        <button id="theme-toggle" aria-label="Đổi giao diện sáng tối">🌙</button>
+        <div class="top-bar-actions">
+          <div id="meal-period-selector" class="meal-period-selector" aria-label="Chọn khung giờ ăn"></div>
+          <button id="theme-toggle" aria-label="Đổi giao diện sáng tối">🌙</button>
+        </div>
       </header>
 
       <div class="home-hero">
@@ -104,7 +104,10 @@
           <h2 id="swipe-title" class="screen-header__title">Chọn món</h2>
           <p id="swipe-subtitle" class="screen-header__caption">Đang chuẩn bị món cho bạn</p>
         </div>
-        <button class="icon-btn" id="btn-history" aria-label="Xem lịch sử">🕘</button>
+        <div class="screen-header__actions">
+          <button class="icon-btn" id="btn-swipe-close" aria-label="Đóng màn hình vuốt">✕</button>
+          <button class="icon-btn" id="btn-history" aria-label="Xem lịch sử">🕘</button>
+        </div>
       </header>
 
       <div id="swipe-filter-summary" class="summary-row" aria-label="Bộ lọc hiện tại"></div>

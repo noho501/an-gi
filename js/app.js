@@ -28,6 +28,7 @@ const state = {
   previousScreen: 'screen-home',
   currentCategory: null,
   mealPeriod: detectMealPeriod(),
+  mealPeriodMenuOpen: false,
   questionIndex: 0,
   answers: {},
   filteredIds: [],
@@ -64,6 +65,7 @@ const refs = {
   swipeSummary: qs('#swipe-filter-summary'),
   swipeCount: qs('#swipe-count'),
   swipeContainer: qs('#card-container'),
+  swipeClose: qs('#btn-swipe-close'),
   historyButton: qs('#btn-history'),
   restartButton: qs('#btn-restart'),
   shuffleButton: qs('#btn-shuffle'),
@@ -109,6 +111,12 @@ function bindStaticEvents() {
   refs.startButton.addEventListener('click', () => showScreen('screen-step1', { focus: '.category-card' }));
   refs.themeToggle.addEventListener('click', handleThemeToggle);
 
+  document.addEventListener('click', (event) => {
+    if (!state.mealPeriodMenuOpen) return;
+    if (refs.mealPeriodSelector.contains(event.target)) return;
+    closeMealPeriodMenu();
+  });
+
   refs.logos.forEach((logo) => {
     logo.addEventListener('click', (event) => {
       event.preventDefault();
@@ -123,6 +131,7 @@ function bindStaticEvents() {
   refs.questionBack.addEventListener('click', handleQuestionBack);
   refs.questionNext.addEventListener('click', handleQuestionNext);
   refs.swipeBack.addEventListener('click', handleSwipeBack);
+  refs.swipeClose.addEventListener('click', handleSwipeClose);
   refs.historyButton.addEventListener('click', () => openHistory('screen-swipe'));
   refs.restartButton.addEventListener('click', () => showQuestions(0));
   refs.shuffleButton.addEventListener('click', reshuffleCurrentDeck);
@@ -216,32 +225,65 @@ function restoreSession() {
 }
 
 function renderMealPeriodSelector() {
-  refs.mealPeriodSelector.innerHTML = MEAL_PERIODS.map((period) => {
-    const active = period.id === state.mealPeriod;
-    return `
-      <button
-        type="button"
-        class="meal-period-btn${active ? ' active' : ''}"
-        role="tab"
-        aria-selected="${String(active)}"
-        aria-label="${period.label} ${period.timeLabel}"
-        data-meal-period="${period.id}"
-      >
-        <span class="meal-period-btn__icon" aria-hidden="true">${period.icon}</span>
-        <span class="meal-period-btn__label">${period.shortLabel}</span>
-      </button>
-    `;
-  }).join('');
+  const activePeriod = getMealPeriod(state.mealPeriod);
+  refs.mealPeriodSelector.classList.toggle('open', state.mealPeriodMenuOpen);
+  refs.mealPeriodSelector.innerHTML = `
+    <button
+      type="button"
+      class="meal-period-menu-toggle"
+      aria-haspopup="menu"
+      aria-expanded="${String(state.mealPeriodMenuOpen)}"
+      aria-label="Chọn khung giờ ăn: ${activePeriod.label}"
+    >
+      <span class="meal-period-menu-toggle__icon" aria-hidden="true">${activePeriod.icon}</span>
+      <span class="meal-period-menu-toggle__caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="meal-period-menu" role="menu" aria-label="Khung giờ ăn">
+      ${MEAL_PERIODS.map((period) => {
+        const active = period.id === state.mealPeriod;
+        return `
+          <button
+            type="button"
+            class="meal-period-menu-item${active ? ' active' : ''}"
+            role="menuitemradio"
+            aria-checked="${String(active)}"
+            data-meal-period="${period.id}"
+          >
+            <span class="meal-period-menu-item__icon" aria-hidden="true">${period.icon}</span>
+            <span class="meal-period-menu-item__label">${period.label}</span>
+          </button>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  refs.mealPeriodSelector.querySelector('.meal-period-menu-toggle')?.addEventListener('click', handleMealPeriodToggle);
 
   refs.mealPeriodSelector.querySelectorAll('[data-meal-period]').forEach((button) => {
-    button.addEventListener('click', () => changeMealPeriod(button.dataset.mealPeriod));
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      changeMealPeriod(button.dataset.mealPeriod);
+    });
   });
+}
+
+function handleMealPeriodToggle(event) {
+  event.stopPropagation();
+  state.mealPeriodMenuOpen = !state.mealPeriodMenuOpen;
+  renderMealPeriodSelector();
+}
+
+function closeMealPeriodMenu() {
+  if (!state.mealPeriodMenuOpen) return;
+  state.mealPeriodMenuOpen = false;
+  renderMealPeriodSelector();
 }
 
 function changeMealPeriod(periodId) {
   if (!isValidMealPeriod(periodId) || periodId === state.mealPeriod) return;
 
   state.mealPeriod = periodId;
+  state.mealPeriodMenuOpen = false;
   setMealPeriodPreference(periodId);
   renderMealPeriodSelector();
   renderGreeting();
@@ -356,6 +398,40 @@ function handleSwipeBack() {
   showQuestions(0);
 }
 
+function handleSwipeClose() {
+  window.clearTimeout(state.questionTimer);
+  closeDetail();
+  destroyTopController();
+
+  const previousScreen = state.previousScreen || 'screen-step1';
+
+  if (previousScreen === 'screen-history') {
+    closeHistory();
+    return;
+  }
+
+  if (previousScreen === 'screen-questions') {
+    showScreen('screen-questions', { focus: '.question-option' });
+    return;
+  }
+
+  if (previousScreen === 'screen-step1') {
+    showScreen('screen-step1', { focus: '.category-card' });
+    return;
+  }
+
+  if (previousScreen === 'screen-end') {
+    showEnd(state.endMode);
+    return;
+  }
+
+  if (state.currentCategory) {
+    showQuestions(0);
+  } else {
+    showScreen('screen-step1', { focus: '.category-card' });
+  }
+}
+
 function rebuildDeck(resetCursor) {
   const foods = filterFoods(state.allFoods, state.currentCategory, state.answers, state.mealPeriod);
   state.filteredIds = foods.map((food) => food.id);
@@ -381,6 +457,8 @@ function renderSwipeScreen() {
   renderSwipeHeader();
   renderSwipeSummary();
   renderStack();
+  const fromScreen = state.currentScreen === 'screen-swipe' ? state.previousScreen : state.currentScreen;
+  state.previousScreen = fromScreen || 'screen-step1';
   showScreen('screen-swipe', { focus: '.food-card.is-top' });
 }
 

@@ -148,61 +148,95 @@ ul {
   padding-bottom: 12px;
 }
 
-.meal-period-dock {
-  position: fixed;
-  left: 50%;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  z-index: 90;
-  width: min(calc(100vw - 24px), 520px);
-  transform: translateX(-50%);
-  padding: 0 12px;
-  pointer-events: none;
+.top-bar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .meal-period-selector {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.meal-period-menu-toggle {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 20px;
+  transition: transform var(--transition), background var(--transition);
+}
+
+.meal-period-menu-toggle:hover {
+  transform: scale(1.04);
+}
+
+.meal-period-menu-toggle__caret {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.meal-period-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
   padding: 8px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.75);
+  border-radius: 20px;
+  background: var(--surface);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  pointer-events: auto;
+  z-index: 30;
 }
 
-.dark .meal-period-selector {
-  background: rgba(20, 24, 41, 0.88);
-}
-
-.meal-period-btn {
-  min-height: 52px;
-  padding: 10px 8px;
-  border-radius: 18px;
+.meal-period-selector.open .meal-period-menu {
   display: flex;
-  flex-direction: column;
+}
+
+.meal-period-menu-item {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: var(--text-secondary);
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
   transition: transform var(--transition), background var(--transition), color var(--transition);
 }
 
-.meal-period-btn.active {
+.meal-period-menu-item:hover {
+  transform: translateX(2px);
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.meal-period-menu-item.active {
   color: #fff;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  box-shadow: 0 10px 24px rgba(255, 107, 107, 0.24);
 }
 
-.meal-period-btn__icon {
-  font-size: 18px;
-}
-
-.meal-period-btn__label {
-  font-size: 12px;
-  font-weight: 800;
+.meal-period-menu-item__icon {
+  font-size: 16px;
 }
 
 .screen-header {
@@ -278,13 +312,6 @@ ul {
   margin: 6px 0 0;
   font-size: 22px;
   font-weight: 800;
-  line-height: 1.2;
-}
-
-.screen-header__caption {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: var(--text-secondary);
 }
 
 #screen-home {
@@ -514,18 +541,27 @@ ul {
 }
 
 #screen-swipe {
-  padding-bottom: 18px;
+  position: relative;
+  min-height: 100dvh;
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+#screen-swipe .screen-header {
+  align-items: center;
+  flex-shrink: 0;
 }
 
 #card-container {
   position: relative;
-  flex: 1;
-  min-height: 500px;
-  max-height: 560px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
+  flex: 1 1 auto;
+  min-height: 320px;
+  overflow: hidden;
+  display: block;
+  padding: 8px 0 16px;
 }
 
 .food-card {
@@ -533,7 +569,7 @@ ul {
   --drag-x: 0px;
   --drag-y: 0px;
   --drag-rotate: 0deg;
-   --drag-scale: 1;
+  --drag-scale: 1;
   --like-opacity: 0;
   --skip-opacity: 0;
   position: absolute;
@@ -768,7 +804,9 @@ ul {
 .swipe-toolbar {
   display: flex;
   gap: 10px;
-  padding-top: 16px;
+  justify-content: center;
+  padding-top: 8px;
+  flex-shrink: 0;
 }
 
 .history-section {
@@ -1121,11 +1159,6 @@ ul {
   .history-card__img {
     width: 76px;
     height: 104px;
-  }
-
-  .meal-period-dock {
-    width: calc(100vw - 16px);
-    padding: 0 8px;
   }
 }
 
