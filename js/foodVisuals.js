@@ -6,6 +6,7 @@ const CATEGORY_VISUALS = {
 };
 
 const imageCache = new Map();
+const imagePromiseCache = new Map();
 
 export function getFoodImage(food) {
   if (!food) return '';
@@ -18,10 +19,26 @@ export function getFoodImage(food) {
 }
 
 export function preloadFoodImages(foods) {
-  foods.filter(Boolean).forEach((food) => {
+  return Promise.all(foods.filter(Boolean).map((food) => loadFoodImage(food)));
+}
+
+export function loadFoodImage(food) {
+  if (!food) return Promise.resolve('');
+
+  if (!imagePromiseCache.has(food.id)) {
+    const src = getFoodImage(food);
     const image = new Image();
-    image.src = getFoodImage(food);
-  });
+    image.decoding = 'async';
+    image.loading = 'eager';
+    image.src = src;
+
+    const ready = (typeof image.decode === 'function' ? image.decode().catch(() => undefined) : Promise.resolve())
+      .then(() => src);
+
+    imagePromiseCache.set(food.id, ready);
+  }
+
+  return imagePromiseCache.get(food.id);
 }
 
 function createIllustration(food) {

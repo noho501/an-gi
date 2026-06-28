@@ -3,6 +3,8 @@ const KEYS = {
   HISTORY: 'angi_history',
   SESSION: 'angi_session',
   THEME: 'angi_theme',
+  MEAL_PERIOD: 'angi_meal_period',
+  RECENT_RECOMMENDATIONS: 'angi_recent_recommendations',
 };
 
 const MAX_HISTORY_ITEMS = 60;
@@ -55,6 +57,28 @@ export function setSession(session) {
 
 export function clearSession() {
   localStorage.removeItem(KEYS.SESSION);
+}
+
+export function getMealPeriodPreference() {
+  return localStorage.getItem(KEYS.MEAL_PERIOD);
+}
+
+export function setMealPeriodPreference(periodId) {
+  try {
+    localStorage.setItem(KEYS.MEAL_PERIOD, periodId);
+  } catch {
+    return null;
+  }
+
+  return periodId;
+}
+
+export function getRecentRecommendations() {
+  return readJSON(KEYS.RECENT_RECOMMENDATIONS, []);
+}
+
+export function setRecentRecommendations(ids) {
+  return writeJSON(KEYS.RECENT_RECOMMENDATIONS, Array.isArray(ids) ? ids : []);
 }
 
 export function getTheme() {
