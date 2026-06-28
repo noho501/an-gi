@@ -118,7 +118,7 @@ ul {
 .screen {
   display: none;
   min-height: 100dvh;
-  padding: 0 20px 28px;
+  padding: 0 20px 118px;
   animation: screen-in 220ms ease both;
 }
 
@@ -146,6 +146,63 @@ ul {
   gap: 12px;
   padding-top: calc(16px + env(safe-area-inset-top));
   padding-bottom: 12px;
+}
+
+.meal-period-dock {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 90;
+  width: min(calc(100vw - 24px), 520px);
+  transform: translateX(-50%);
+  padding: 0 12px;
+  pointer-events: none;
+}
+
+.meal-period-selector {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  pointer-events: auto;
+}
+
+.dark .meal-period-selector {
+  background: rgba(20, 24, 41, 0.88);
+}
+
+.meal-period-btn {
+  min-height: 52px;
+  padding: 10px 8px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  transition: transform var(--transition), background var(--transition), color var(--transition);
+}
+
+.meal-period-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 10px 24px rgba(255, 107, 107, 0.24);
+}
+
+.meal-period-btn__icon {
+  font-size: 18px;
+}
+
+.meal-period-btn__label {
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .screen-header {
@@ -269,6 +326,17 @@ ul {
   max-width: 320px;
   font-size: 17px;
   line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.greeting-meta {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
+  font-size: 13px;
+  font-weight: 700;
   color: var(--text-secondary);
 }
 
@@ -440,6 +508,11 @@ ul {
   border-color: transparent;
 }
 
+.summary-chip--period {
+  background: rgba(255, 159, 67, 0.14);
+  border-color: rgba(255, 159, 67, 0.24);
+}
+
 #screen-swipe {
   padding-bottom: 18px;
 }
@@ -460,6 +533,7 @@ ul {
   --drag-x: 0px;
   --drag-y: 0px;
   --drag-rotate: 0deg;
+   --drag-scale: 1;
   --like-opacity: 0;
   --skip-opacity: 0;
   position: absolute;
@@ -472,8 +546,8 @@ ul {
   box-shadow: var(--card-shadow);
   transform:
     translate3d(var(--drag-x), calc(var(--drag-y) + (var(--stack-index) * 14px)), 0)
-    scale(calc(1 - (var(--stack-index) * 0.045)))
-    rotate(var(--drag-rotate));
+    rotate(var(--drag-rotate))
+    scale(calc((1 - (var(--stack-index) * 0.045)) * var(--drag-scale)));
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
   z-index: calc(20 - var(--stack-index));
   will-change: transform;
@@ -519,15 +593,60 @@ ul {
   opacity: var(--skip-opacity);
 }
 
+.card-favorite {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(255, 107, 107, 0.92);
+  box-shadow: 0 10px 24px rgba(255, 107, 107, 0.28);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.card-favorite.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .card-image-wrap {
+  position: relative;
   aspect-ratio: 3 / 4;
   overflow: hidden;
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.18), rgba(255, 159, 67, 0.18));
+}
+
+.card-image-skeleton {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.16));
+  background-size: 240px 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+.food-card:not(.is-loading) .card-image-skeleton {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .card-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
+.food-card.is-loading .card-image {
+  opacity: 0;
 }
 
 .card-body {
@@ -542,7 +661,7 @@ ul {
   margin-bottom: 8px;
 }
 
-.card-style-badge {
+.card-category-badge {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
@@ -577,6 +696,34 @@ ul {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.card-tags,
+.history-card__tags,
+.related-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-tags {
+  margin-top: 14px;
+}
+
+.card-tag,
+.history-tag,
+.related-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--chip-bg);
+  border: 1px solid var(--chip-border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .card-actions {
@@ -693,6 +840,10 @@ ul {
   grid-column: 2;
   display: flex;
   gap: 8px;
+  margin-top: 10px;
+}
+
+.history-card__tags {
   margin-top: 10px;
 }
 
@@ -903,6 +1054,20 @@ ul {
   font-weight: 700;
 }
 
+.related-list {
+  margin-bottom: 18px;
+}
+
+.related-card {
+  color: var(--text-primary);
+}
+
+.related-empty {
+  margin: 0 0 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 #detail-like-btn {
   width: 100%;
   min-height: 52px;
@@ -917,6 +1082,10 @@ ul {
 
 #detail-like-btn.liked {
   background: linear-gradient(135deg, #e65050, #f97316);
+}
+
+#detail-similar-btn {
+  margin-bottom: 12px;
 }
 
 :focus-visible {
@@ -953,6 +1122,11 @@ ul {
     width: 76px;
     height: 104px;
   }
+
+  .meal-period-dock {
+    width: calc(100vw - 16px);
+    padding: 0 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -963,5 +1137,14 @@ ul {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -240px 0;
+  }
+  to {
+    background-position: 240px 0;
   }
 }

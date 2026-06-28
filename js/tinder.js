@@ -3,6 +3,7 @@ const SWIPE_VELOCITY = 0.55;
 const MAX_ROTATION = 18;
 const RELEASE_DURATION = 280;
 const RETURN_DURATION = 220;
+const DRAG_SCALE = 1.02;
 
 export function createSwipeController(card, { onLike, onSkip, onDetail }) {
   let pointerId = null;
@@ -21,6 +22,9 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
   const onPointerDown = (event) => {
     if (locked || event.button > 0 || event.target.closest('.card-actions')) return;
 
+    window.clearTimeout(completeTimer);
+    releasePointer();
+
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
@@ -29,13 +33,15 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
     moved = false;
     isDragging = true;
     velocitySamples = [{ x: event.clientX, time: event.timeStamp }];
+
     card.classList.add('is-dragging');
+    card.classList.remove('is-returning');
     card.style.transition = 'none';
     card.setPointerCapture(pointerId);
   };
 
   const onPointerMove = (event) => {
-    if (!isDragging || event.pointerId !== pointerId) return;
+    if (!isDragging || event.pointerId !== pointerId || locked) return;
 
     const dx = event.clientX - startX;
     const dy = event.clientY - startY;
@@ -45,6 +51,7 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
     moved = true;
     currentX = dx;
     currentY = dy * 0.18;
+    suppressClick = true;
 
     velocitySamples.push({ x: event.clientX, time: event.timeStamp });
     velocitySamples = velocitySamples.slice(-5);
@@ -53,27 +60,19 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
   };
 
   const onPointerUp = (event) => {
-    if (!isDragging || event.pointerId !== pointerId) return;
-
-    releasePointer();
-
-    if (!moved) return;
-
-    suppressClick = true;
-    const velocityX = getVelocityX();
-
-    if (Math.abs(currentX) > SWIPE_DISTANCE || (Math.abs(velocityX) > SWIPE_VELOCITY && Math.abs(currentX) > 24)) {
-      swipe(currentX > 0 ? 'right' : 'left');
-      return;
-    }
-
-    reset();
+    if (event.pointerId !== pointerId) return;
+    finishGesture(true);
   };
 
   const onPointerCancel = (event) => {
-    if (!isDragging || event.pointerId !== pointerId) return;
-    releasePointer();
-    reset();
+    if (event.pointerId !== pointerId) return;
+    finishGesture(false);
+  };
+
+  const onLostPointerCapture = () => {
+    if (!locked) {
+      finishGesture(false, true);
+    }
   };
 
   const onCardClick = (event) => {
@@ -90,24 +89,24 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
   };
 
   card.addEventListener('pointerdown', onPointerDown);
-  card.addEventListener('pointermove', onPointerMove);
+  card.addEventListener('pointermove', onPointerMove, { passive: true });
   card.addEventListener('pointerup', onPointerUp);
   card.addEventListener('pointercancel', onPointerCancel);
+  card.addEventListener('lostpointercapture', onLostPointerCapture);
   card.addEventListener('click', onCardClick);
 
   return {
     destroy() {
       window.clearTimeout(completeTimer);
       window.cancelAnimationFrame(rafId);
+      releasePointer();
       card.removeEventListener('pointerdown', onPointerDown);
       card.removeEventListener('pointermove', onPointerMove);
       card.removeEventListener('pointerup', onPointerUp);
       card.removeEventListener('pointercancel', onPointerCancel);
+      card.removeEventListener('lostpointercapture', onLostPointerCapture);
       card.removeEventListener('click', onCardClick);
-      card.classList.remove('is-dragging', 'is-returning');
-      card.style.transition = '';
-      resetHints();
-      setTransform(0, 0, 0);
+      resetCard();
     },
     reset,
     swipe,
@@ -126,8 +125,9 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
     const rotation = MAX_ROTATION * sign;
 
     showHints(sign);
-    card.style.transition = `transform ${RELEASE_DURATION}ms cubic-bezier(0.22, 1, 0.36, 1)`;
-    setTransform(targetX, targetY, rotation);
+    card.style.transition = `transform ${RELEASE_DURATION}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${RELEASE_DURATION}ms ease`;
+    setTransform(targetX, targetY, rotation, 1);
+    card.style.opacity = '0';
 
     window.clearTimeout(completeTimer);
     completeTimer = window.setTimeout(() => {
@@ -143,14 +143,17 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
   }
 
   function reset() {
+    if (locked) return;
     card.classList.remove('is-dragging');
     card.classList.add('is-returning');
-    card.style.transition = `transform ${RETURN_DURATION}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+    card.style.transition = `transform ${RETURN_DURATION}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${RETURN_DURATION}ms ease`;
     currentX = 0;
     currentY = 0;
     resetHints();
-    setTransform(0, 0, 0);
-    window.setTimeout(() => card.classList.remove('is-returning'), RETURN_DURATION);
+    setTransform(0, 0, 0, 1);
+    card.style.opacity = '1';
+    window.clearTimeout(completeTimer);
+    completeTimer = window.setTimeout(() => card.classList.remove('is-returning'), RETURN_DURATION);
   }
 
   function updateCard() {
@@ -158,9 +161,13 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
 
     rafId = window.requestAnimationFrame(() => {
       rafId = 0;
+      if (!isDragging || locked) return;
+
       const rotation = clamp(currentX * 0.08, -MAX_ROTATION, MAX_ROTATION);
+      const opacity = clamp(1 - (Math.abs(currentX) / (window.innerWidth * 1.35)), 0.76, 1);
       showHints(currentX);
-      setTransform(currentX, currentY, rotation);
+      setTransform(currentX, currentY, rotation, DRAG_SCALE);
+      card.style.opacity = String(opacity);
     });
   }
 
@@ -176,10 +183,36 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
     card.style.setProperty('--skip-opacity', '0');
   }
 
-  function setTransform(x, y, rotation) {
+  function setTransform(x, y, rotation, scale = 1) {
     card.style.setProperty('--drag-x', `${x}px`);
     card.style.setProperty('--drag-y', `${y}px`);
     card.style.setProperty('--drag-rotate', `${rotation}deg`);
+    card.style.setProperty('--drag-scale', String(scale));
+  }
+
+  function finishGesture(shouldRelease, fromLostCapture = false) {
+    if (!isDragging && !fromLostCapture) return;
+
+    const didMove = moved;
+    const velocityX = getVelocityX();
+
+    releasePointer();
+
+    if (!didMove) {
+      reset();
+      suppressClick = false;
+      return;
+    }
+
+    const shouldSwipe = shouldRelease
+      && (Math.abs(currentX) > SWIPE_DISTANCE || (Math.abs(velocityX) > SWIPE_VELOCITY && Math.abs(currentX) > 24));
+
+    if (shouldSwipe) {
+      swipe(currentX > 0 ? 'right' : 'left');
+      return;
+    }
+
+    reset();
   }
 
   function releasePointer() {
@@ -189,6 +222,15 @@ export function createSwipeController(card, { onLike, onSkip, onDetail }) {
 
     pointerId = null;
     isDragging = false;
+    moved = false;
+  }
+
+  function resetCard() {
+    card.classList.remove('is-dragging', 'is-returning');
+    card.style.transition = '';
+    card.style.opacity = '1';
+    resetHints();
+    setTransform(0, 0, 0, 1);
   }
 
   function getVelocityX() {

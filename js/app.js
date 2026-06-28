@@ -1,15 +1,21 @@
 import { getFoods } from './foodData.js';
 import { filterFoods, getAnswerSummary, getQuestionsForCategory } from './filter.js';
-import { getFoodImage, preloadFoodImages } from './foodVisuals.js';
+import { getFoodImage, loadFoodImage, preloadFoodImages } from './foodVisuals.js';
+import { getMealPeriod, MEAL_PERIODS, detectMealPeriod, isValidMealPeriod } from './mealPeriods.js';
+import { getFoodMeta, getRelatedFoods } from './recommendationEngine.js';
 import { createSwipeController } from './tinder.js';
 import {
   addHistory,
   clearSession,
   getHistory,
   getLiked,
+  getMealPeriodPreference,
+  getRecentRecommendations,
   getSession,
   getTheme,
   isLiked,
+  setMealPeriodPreference,
+  setRecentRecommendations,
   setSession,
   setTheme,
   toggleLiked,
@@ -21,6 +27,7 @@ const state = {
   currentScreen: 'screen-home',
   previousScreen: 'screen-home',
   currentCategory: null,
+  mealPeriod: detectMealPeriod(),
   questionIndex: 0,
   answers: {},
   filteredIds: [],
@@ -36,8 +43,13 @@ const refs = {
   screens: qsa('.screen'),
   logos: qsa('.logo'),
   status: qs('#app-status'),
+  mealPeriodSelector: qs('#meal-period-selector'),
   startButton: qs('#btn-start'),
   themeToggle: qs('#theme-toggle'),
+  greetingIcon: qs('#greeting-icon'),
+  greetingTitle: qs('#greeting-title'),
+  greetingSubtitle: qs('#greeting-subtitle'),
+  greetingMeta: qs('#greeting-meta'),
   categoryCards: qsa('.category-card'),
   categoryHint: qs('#category-hint'),
   questionBack: qs('#btn-question-back'),
@@ -75,7 +87,10 @@ const refs = {
   detailCal: qs('#detail-cal'),
   detailCat: qs('#detail-cat'),
   detailStyle: qs('#detail-style'),
+  detailMeal: qs('#detail-meal'),
   detailIngredients: qs('#detail-ingredients'),
+  detailRelated: qs('#detail-related'),
+  detailSimilar: qs('#detail-similar-btn'),
   detailLike: qs('#detail-like-btn'),
 };
 
@@ -87,7 +102,6 @@ async function init() {
   state.allFoods = await getFoods();
   state.foodsById = new Map(state.allFoods.map((food) => [food.id, food]));
   createStackCards();
-  renderGreeting();
   restoreSession();
 }
 
@@ -129,6 +143,8 @@ function bindStaticEvents() {
     if (!state.detailFoodId) return;
     setLikedState(state.detailFoodId);
   });
+  refs.detailRelated.addEventListener('click', handleRelatedClick);
+  refs.detailSimilar.addEventListener('click', openSimilarFood);
 
   bindDetailSwipeToClose();
 
@@ -141,6 +157,12 @@ function bindStaticEvents() {
 
 function restoreSession() {
   const session = getSession();
+  const storedMealPeriod = session?.mealPeriod || getMealPeriodPreference();
+  state.mealPeriod = isValidMealPeriod(storedMealPeriod) ? storedMealPeriod : detectMealPeriod();
+
+  renderMealPeriodSelector();
+  renderGreeting();
+  markSelectedCategory();
 
   if (!session) {
     showScreen('screen-home', { focus: '#btn-start' });
@@ -150,12 +172,9 @@ function restoreSession() {
   state.currentCategory = session.category || null;
   state.questionIndex = Number.isInteger(session.questionIndex) ? session.questionIndex : 0;
   state.answers = session.answers || {};
-  state.filteredIds = sanitizeIds(session.filteredIds);
+  state.filteredIds = sanitizeIds(session.filteredIds?.length ? session.filteredIds : getRecentRecommendations());
   state.deckCursor = clamp(session.deckCursor || 0, 0, state.filteredIds.length);
   state.endMode = session.endMode || 'done';
-
-  markSelectedCategory();
-
   if (!state.currentCategory) {
     showScreen('screen-home', { focus: '#btn-start' });
     return;
@@ -163,6 +182,7 @@ function restoreSession() {
 
   if (!state.filteredIds.length) {
     rebuildDeck(false);
+    return;
   }
 
   switch (session.screen) {
@@ -195,29 +215,60 @@ function restoreSession() {
   }
 }
 
-function renderGreeting() {
-  const hour = new Date().getHours();
-  let icon = '🌃';
-  let title = 'Đói bụng rồi?';
-  let subtitle = 'Cùng tìm món hợp gu thật nhanh.';
+function renderMealPeriodSelector() {
+  refs.mealPeriodSelector.innerHTML = MEAL_PERIODS.map((period) => {
+    const active = period.id === state.mealPeriod;
+    return `
+      <button
+        type="button"
+        class="meal-period-btn${active ? ' active' : ''}"
+        role="tab"
+        aria-selected="${String(active)}"
+        aria-label="${period.label} ${period.timeLabel}"
+        data-meal-period="${period.id}"
+      >
+        <span class="meal-period-btn__icon" aria-hidden="true">${period.icon}</span>
+        <span class="meal-period-btn__label">${period.shortLabel}</span>
+      </button>
+    `;
+  }).join('');
 
-  if (hour >= 5 && hour < 11) {
-    icon = '🍳';
-    title = 'Chào buổi sáng';
-    subtitle = 'Chọn món hợp mood chỉ với vài cú chạm.';
-  } else if (hour >= 11 && hour < 14) {
-    icon = '☀️';
-    title = 'Đến giờ ăn trưa';
-    subtitle = 'Lọc nhanh món hợp ý rồi vuốt thôi.';
-  } else if (hour >= 17 && hour < 21) {
-    icon = '🌙';
-    title = 'Ăn tối nào';
-    subtitle = 'Hôm nay mình ăn món gì cho đã đây?';
+  refs.mealPeriodSelector.querySelectorAll('[data-meal-period]').forEach((button) => {
+    button.addEventListener('click', () => changeMealPeriod(button.dataset.mealPeriod));
+  });
+}
+
+function changeMealPeriod(periodId) {
+  if (!isValidMealPeriod(periodId) || periodId === state.mealPeriod) return;
+
+  state.mealPeriod = periodId;
+  setMealPeriodPreference(periodId);
+  renderMealPeriodSelector();
+  renderGreeting();
+  markSelectedCategory();
+  closeDetail();
+
+  if (!state.currentCategory) {
+    persistSession();
+    announce(`Đã chuyển sang ${getMealPeriod(periodId).label.toLowerCase()}`);
+    return;
   }
 
-  qs('#greeting-icon').textContent = icon;
-  qs('#greeting-title').textContent = title;
-  qs('#greeting-subtitle').textContent = subtitle;
+  if (state.currentScreen === 'screen-questions' && !state.answers.subcategory) {
+    showQuestions(0);
+    return;
+  }
+
+  rebuildDeck(true);
+  announce(`Đã làm mới gợi ý cho ${getMealPeriod(periodId).label.toLowerCase()}`);
+}
+
+function renderGreeting() {
+  const mealPeriod = getMealPeriod(state.mealPeriod);
+  refs.greetingIcon.textContent = mealPeriod.icon;
+  refs.greetingTitle.textContent = mealPeriod.greetingTitle;
+  refs.greetingSubtitle.textContent = mealPeriod.greetingSubtitle;
+  refs.greetingMeta.textContent = `${mealPeriod.label} · ${mealPeriod.timeLabel}`;
 }
 
 function selectCategory(category) {
@@ -249,9 +300,10 @@ function showQuestions(index) {
 
   const question = questions[state.questionIndex];
   const selected = state.answers[question.id];
+  const mealPeriod = getMealPeriod(state.mealPeriod);
   refs.questionProgress.textContent = `Câu ${state.questionIndex + 1}/${questions.length}`;
   refs.questionTitle.textContent = question.title;
-  refs.questionSubtitle.textContent = `${state.currentCategory} · Trả lời nhanh để lọc chuẩn hơn`;
+  refs.questionSubtitle.textContent = `${mealPeriod.icon} ${mealPeriod.label} · ${state.currentCategory}`;
   refs.questionOptions.innerHTML = question.options
     .map((option) => {
       const active = option.id === selected;
@@ -269,7 +321,7 @@ function showQuestions(index) {
     .join('');
 
   refs.questionNext.disabled = !selected;
-  refs.questionNext.textContent = state.questionIndex === questions.length - 1 ? 'Xem món' : 'Tiếp tục';
+  refs.questionNext.textContent = 'Xem món';
 
   refs.questionOptions.querySelectorAll('.question-option').forEach((button) => {
     button.addEventListener('click', () => {
@@ -291,43 +343,25 @@ function handleQuestionNext() {
   const question = questions[state.questionIndex];
 
   if (!question || !state.answers[question.id]) return;
-
-  if (state.questionIndex >= questions.length - 1) {
-    rebuildDeck(true);
-    return;
-  }
-
-  showQuestions(state.questionIndex + 1);
+  rebuildDeck(true);
 }
 
 function handleQuestionBack() {
   window.clearTimeout(state.questionTimer);
-
-  if (state.questionIndex > 0) {
-    showQuestions(state.questionIndex - 1);
-    return;
-  }
-
   showScreen('screen-step1', { focus: '.category-card' });
 }
 
 function handleSwipeBack() {
   window.clearTimeout(state.questionTimer);
-  const questions = getQuestionsForCategory(state.currentCategory);
-
-  if (questions.length) {
-    showQuestions(questions.length - 1);
-    return;
-  }
-
-  showScreen('screen-step1', { focus: '.category-card' });
+  showQuestions(0);
 }
 
 function rebuildDeck(resetCursor) {
-  const foods = filterFoods(state.allFoods, state.currentCategory, state.answers);
+  const foods = filterFoods(state.allFoods, state.currentCategory, state.answers, state.mealPeriod);
   state.filteredIds = foods.map((food) => food.id);
   state.deckCursor = resetCursor ? 0 : clamp(state.deckCursor, 0, state.filteredIds.length);
   state.endMode = state.filteredIds.length ? 'done' : 'empty';
+  setRecentRecommendations(state.filteredIds);
 
   if (!state.filteredIds.length) {
     showEnd('empty');
@@ -352,15 +386,20 @@ function renderSwipeScreen() {
 
 function renderSwipeHeader() {
   const remaining = Math.max(state.filteredIds.length - state.deckCursor, 0);
-  refs.swipeTitle.textContent = state.currentCategory || 'Chọn món';
-  refs.swipeSubtitle.textContent = remaining ? `${remaining} món đang hợp bộ lọc` : 'Đang chuẩn bị món cho bạn';
+  const mealPeriod = getMealPeriod(state.mealPeriod);
+  refs.swipeTitle.textContent = `${mealPeriod.icon} ${state.currentCategory || 'Chọn món'}`;
+  refs.swipeSubtitle.textContent = remaining
+    ? `${remaining} món hợp ${mealPeriod.label.toLowerCase()}`
+    : 'Đang chuẩn bị món cho bạn';
   refs.swipeCount.textContent = state.filteredIds.length ? `${Math.min(state.deckCursor + 1, state.filteredIds.length)}/${state.filteredIds.length}` : '0/0';
 }
 
 function renderSwipeSummary() {
+  const mealPeriod = getMealPeriod(state.mealPeriod);
   const summary = getAnswerSummary(state.currentCategory, state.answers);
   const chips = [
     `<span class="summary-chip summary-chip--category">${state.currentCategory}</span>`,
+    `<span class="summary-chip summary-chip--period">${mealPeriod.icon} ${mealPeriod.shortLabel}</span>`,
     ...summary.map((item) => `<span class="summary-chip">${item.label}</span>`),
   ];
   refs.swipeSummary.innerHTML = chips.join('');
@@ -377,19 +416,22 @@ function createStackCards() {
     card.innerHTML = `
       <div class="hint-like">❤️ Thích</div>
       <div class="hint-skip">✕ Bỏ qua</div>
+      <div class="card-favorite" aria-hidden="true">❤</div>
       <div class="card-image-wrap">
-        <img class="card-image" alt="" draggable="false" loading="eager">
+        <div class="card-image-skeleton"></div>
+        <img class="card-image" alt="" draggable="false" loading="lazy">
       </div>
       <div class="card-body">
         <div class="card-meta">
-          <span class="card-style-badge"></span>
+          <span class="card-category-badge"></span>
           <span class="card-price"></span>
         </div>
         <h2 class="card-name"></h2>
         <p class="card-desc"></p>
+        <div class="card-tags"></div>
       </div>
       <div class="card-actions" role="group" aria-label="Hành động với món ăn">
-        <button type="button" class="btn-action btn-skip" aria-label="Bỏ qua">✕</button>
+        <button type="button" class="btn-action btn-skip" aria-label="Bỏ qua">❌</button>
         <button type="button" class="btn-action btn-detail" aria-label="Xem chi tiết">📖</button>
         <button type="button" class="btn-action btn-like" aria-label="Thích">❤️</button>
       </div>
@@ -443,8 +485,9 @@ function renderStack() {
 
     if (!food) {
       card.hidden = true;
-      card.classList.remove('is-top');
+      card.classList.remove('is-top', 'is-loading');
       card.dataset.foodId = '';
+      card.setAttribute('aria-hidden', 'true');
       card.tabIndex = -1;
       return;
     }
@@ -463,42 +506,57 @@ function renderStack() {
     return;
   }
 
-  const topFoodId = Number(topCard.dataset.foodId);
   state.topController = createSwipeController(topCard, {
     onLike: () => advanceDeck('right'),
     onSkip: () => advanceDeck('left'),
-    onDetail: () => openDetail(topFoodId),
+    onDetail: () => openDetail(Number(topCard.dataset.foodId)),
   });
 
   preloadFoodImages([
     ...foods.slice(1),
     state.foodsById.get(state.filteredIds[state.deckCursor + 3]),
   ]);
+
   renderSwipeHeader();
   persistSession('screen-swipe');
 }
 
 function hydrateCard(card, food, stackIndex) {
+  const meta = getFoodMeta(food);
+  const image = card.querySelector('.card-image');
+  const tagMarkup = meta.mealTags
+    .slice(0, 3)
+    .map((periodId) => `<span class="card-tag">${getMealPeriod(periodId).shortLabel}</span>`)
+    .join('');
+
   card.dataset.foodId = String(food.id);
   card.style.setProperty('--stack-index', String(stackIndex));
-  card.querySelector('.card-image').src = getFoodImage(food);
-  card.querySelector('.card-image').alt = food.name;
-  card.querySelector('.card-style-badge').textContent = food.style;
+  card.classList.add('is-loading');
+  image.alt = food.name;
+  image.src = '';
+  card.querySelector('.card-category-badge').textContent = `${food.category} · ${food.style}`;
   card.querySelector('.card-price').textContent = food.price;
   card.querySelector('.card-name').textContent = food.name;
   card.querySelector('.card-desc').textContent = food.description;
+  card.querySelector('.card-tags').innerHTML = tagMarkup || `<span class="card-tag">${getMealPeriod(state.mealPeriod).shortLabel}</span>`;
   card.querySelector('.btn-like').classList.toggle('liked', isLiked(food.id));
+  card.querySelector('.card-favorite').classList.toggle('visible', isLiked(food.id));
+  card.setAttribute('aria-label', `${food.name}. ${food.category}. ${food.price}`);
+
+  loadFoodImage(food).then((src) => {
+    if (card.dataset.foodId !== String(food.id)) return;
+    image.src = src || getFoodImage(food);
+    card.classList.remove('is-loading');
+  });
 }
 
 function advanceDeck(direction) {
   const currentFoodId = state.filteredIds[state.deckCursor];
   if (!currentFoodId) return;
 
+  addHistory(currentFoodId);
   if (direction === 'right') {
-    addHistory(currentFoodId);
     setLikedState(currentFoodId, true);
-  } else {
-    addHistory(currentFoodId);
   }
 
   state.deckCursor += 1;
@@ -525,15 +583,16 @@ function rotateStackCards() {
 
 function showEnd(mode) {
   state.endMode = mode;
+  const mealPeriod = getMealPeriod(state.mealPeriod);
 
   if (mode === 'empty') {
-    refs.endTitle.textContent = 'Chưa có món phù hợp';
-    refs.endSubtitle.innerHTML = 'Hãy đổi câu trả lời hoặc chọn danh mục khác để xem thêm món khớp hơn.';
+    refs.endTitle.textContent = `Chưa có món hợp ${mealPeriod.shortLabel.toLowerCase()}`;
+    refs.endSubtitle.innerHTML = 'Đổi khung giờ, chỉnh câu trả lời hoặc chọn danh mục khác để ra món sát hơn.';
     refs.replayButton.textContent = 'Chỉnh lại câu trả lời';
     refs.reshuffleButton.textContent = 'Đổi danh mục';
   } else {
     refs.endTitle.textContent = 'Hết món rồi!';
-    refs.endSubtitle.innerHTML = 'Bạn đã vuốt hết danh sách phù hợp.<br>Xáo lại hoặc chỉnh bộ lọc để chọn tiếp.';
+    refs.endSubtitle.innerHTML = `Bạn đã vuốt hết danh sách hợp ${mealPeriod.label.toLowerCase()}.<br>Xáo lại hoặc đổi bộ lọc để chọn tiếp.`;
     refs.replayButton.textContent = 'Làm lại bộ lọc';
     refs.reshuffleButton.textContent = 'Xáo lại';
   }
@@ -582,16 +641,18 @@ function renderHistoryLists() {
 }
 
 function renderHistoryCard(food) {
+  const meta = getFoodMeta(food);
   return `
     <article class="history-card" tabindex="0" data-food-id="${food.id}">
       <img class="history-card__img" src="${getFoodImage(food)}" alt="${food.name}">
       <div class="history-card__content">
         <div class="history-card__meta">
-          <span class="history-card__badge">${food.style}</span>
+          <span class="history-card__badge">${food.category}</span>
           <span class="history-card__price">${food.price}</span>
         </div>
         <h3>${food.name}</h3>
         <p>${food.description}</p>
+        <div class="history-card__tags">${meta.mealTags.map((periodId) => `<span class="history-tag">${getMealPeriod(periodId).shortLabel}</span>`).join('')}</div>
       </div>
       <div class="history-card__actions">
         <button type="button" class="history-btn" data-action="detail" data-food-id="${food.id}">Chi tiết</button>
@@ -629,6 +690,12 @@ function openDetail(foodId) {
   const food = state.foodsById.get(foodId);
   if (!food) return;
 
+  const meta = getFoodMeta(food);
+  const relatedFoods = getRelatedFoods(state.allFoods, food, {
+    mealPeriod: state.mealPeriod,
+    answers: state.answers,
+  });
+
   state.detailFoodId = foodId;
   refs.detailImage.src = getFoodImage(food);
   refs.detailImage.alt = food.name;
@@ -638,7 +705,11 @@ function openDetail(foodId) {
   refs.detailCal.textContent = `${food.calories} kcal`;
   refs.detailCat.textContent = food.category;
   refs.detailStyle.textContent = food.style;
+  refs.detailMeal.textContent = meta.mealTagLabels.join(' · ');
   refs.detailIngredients.innerHTML = food.ingredients.map((item) => `<li>${item}</li>`).join('');
+  refs.detailRelated.innerHTML = relatedFoods.length
+    ? relatedFoods.map((item) => `<button type="button" class="related-card" data-food-id="${item.id}">${item.name}</button>`).join('')
+    : '<p class="related-empty">Chưa có món tương tự rõ ràng.</p>';
   syncDetailLikeButton(foodId);
   refs.detailSheet.classList.add('open');
   refs.detailOverlay.classList.add('visible');
@@ -654,7 +725,27 @@ function closeDetail() {
   document.body.classList.remove('sheet-open');
 }
 
+function handleRelatedClick(event) {
+  const button = event.target.closest('[data-food-id]');
+  if (!button) return;
+  openDetail(Number(button.dataset.foodId));
+}
+
+function openSimilarFood() {
+  if (!state.detailFoodId) return;
+  const currentFood = state.foodsById.get(state.detailFoodId);
+  const similar = getRelatedFoods(state.allFoods, currentFood, {
+    mealPeriod: state.mealPeriod,
+    answers: state.answers,
+  }, 8);
+
+  const nextFood = similar[Math.floor(Math.random() * similar.length)];
+  if (!nextFood) return;
+  openDetail(nextFood.id);
+}
+
 function bindDetailSwipeToClose() {
+  let pointerId = null;
   let startY = 0;
   let currentY = 0;
   let dragging = false;
@@ -662,22 +753,24 @@ function bindDetailSwipeToClose() {
   refs.detailSheet.addEventListener('pointerdown', (event) => {
     if (!event.target.closest('.sheet-handle, .sheet-header')) return;
     dragging = true;
+    pointerId = event.pointerId;
     startY = event.clientY;
     currentY = 0;
-    refs.detailSheet.setPointerCapture(event.pointerId);
+    refs.detailSheet.setPointerCapture(pointerId);
     refs.detailSheet.classList.add('is-dragging');
     refs.detailSheet.style.transition = 'none';
   });
 
   refs.detailSheet.addEventListener('pointermove', (event) => {
-    if (!dragging) return;
+    if (!dragging || event.pointerId !== pointerId) return;
     currentY = Math.max(event.clientY - startY, 0);
     refs.detailSheet.style.transform = `translateX(-50%) translateY(${currentY}px)`;
   });
 
   const finishSheetDrag = (event) => {
-    if (!dragging) return;
+    if (!dragging || event.pointerId !== pointerId) return;
     dragging = false;
+    pointerId = null;
     refs.detailSheet.classList.remove('is-dragging');
     if (refs.detailSheet.hasPointerCapture(event.pointerId)) {
       refs.detailSheet.releasePointerCapture(event.pointerId);
@@ -716,6 +809,7 @@ function syncLikeUi(foodId) {
   state.stackCards.forEach((card) => {
     if (Number(card.dataset.foodId) !== foodId) return;
     card.querySelector('.btn-like').classList.toggle('liked', isLiked(foodId));
+    card.querySelector('.card-favorite').classList.toggle('visible', isLiked(foodId));
   });
   syncDetailLikeButton(foodId);
   renderHistoryLists();
@@ -743,6 +837,8 @@ function applyTheme() {
 }
 
 function markSelectedCategory() {
+  const mealPeriod = getMealPeriod(state.mealPeriod);
+
   refs.categoryCards.forEach((button) => {
     const active = button.dataset.category === state.currentCategory;
     button.classList.toggle('active', active);
@@ -750,14 +846,15 @@ function markSelectedCategory() {
   });
 
   refs.categoryHint.textContent = state.currentCategory
-    ? `Đang chọn ${state.currentCategory}.`
-    : 'Chọn một danh mục để bắt đầu.';
+    ? `${mealPeriod.icon} ${mealPeriod.label} · Đang chọn ${state.currentCategory}.`
+    : `${mealPeriod.icon} ${mealPeriod.label} · Chọn một danh mục để bắt đầu.`;
 }
 
 function persistSession(screen = state.currentScreen) {
   setSession({
     screen,
     category: state.currentCategory,
+    mealPeriod: state.mealPeriod,
     questionIndex: state.questionIndex,
     answers: state.answers,
     filteredIds: state.filteredIds,
@@ -819,9 +916,11 @@ function sanitizeIds(ids) {
 
 function resetCardPosition(card) {
   card.style.transition = '';
+  card.style.opacity = '1';
   card.style.setProperty('--drag-x', '0px');
   card.style.setProperty('--drag-y', '0px');
   card.style.setProperty('--drag-rotate', '0deg');
+  card.style.setProperty('--drag-scale', '1');
   card.style.setProperty('--like-opacity', '0');
   card.style.setProperty('--skip-opacity', '0');
 }

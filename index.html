@@ -17,6 +17,9 @@
 <body>
   <div id="app">
     <p id="app-status" class="sr-only" aria-live="polite"></p>
+    <div class="meal-period-dock" aria-label="Chọn khung giờ ăn">
+      <div id="meal-period-selector" class="meal-period-selector" role="tablist" aria-label="Khung giờ ăn"></div>
+    </div>
 
     <section id="screen-home" class="screen active" aria-label="Màn hình chào">
       <header class="top-bar">
@@ -31,6 +34,7 @@
         <div class="greeting-icon" id="greeting-icon" aria-hidden="true">🍳</div>
         <h1 class="greeting-title" id="greeting-title">Chào buổi sáng</h1>
         <p class="greeting-subtitle" id="greeting-subtitle">Chọn món thật nhanh với vài cú chạm.</p>
+        <p class="greeting-meta" id="greeting-meta">Đang gợi ý theo khung giờ hiện tại.</p>
       </div>
 
       <div class="home-cta">
@@ -187,11 +191,19 @@
           <div class="stat-label">Kiểu</div>
           <div class="stat-value" id="detail-style"></div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">Khung giờ</div>
+          <div class="stat-value" id="detail-meal"></div>
+        </div>
       </div>
 
       <div class="sheet-section-title">Nguyên liệu</div>
       <ul id="detail-ingredients"></ul>
 
+      <div class="sheet-section-title">Món tương tự</div>
+      <div id="detail-related" class="related-list"></div>
+
+      <button id="detail-similar-btn" class="btn-secondary" aria-label="Gợi ý món tương tự">🎲 Gợi ý món tương tự</button>
       <button id="detail-like-btn" aria-label="Thêm vào yêu thích">🤍 Thích</button>
     </div>
   </div>
