@@ -1,5 +1,7 @@
 import { getMealPeriod } from './mealPeriods.js';
 
+const MAX_RECOMMENDATIONS = 30;
+
 const META_CACHE = new WeakMap();
 
 const SUBCATEGORY_MATCHERS = {
@@ -41,7 +43,7 @@ export function filterFoods(foods, { mealPeriod, category, answers = {}, exclude
   const excluded = new Set(excludeIds);
   const selectedSubcategory = getSelectedSubcategory(category, answers);
 
-  return foods
+  const matched = foods
     .filter((food) => food.category === category && !excluded.has(food.id))
     .map((food) => {
       const meta = getFoodMeta(food);
@@ -69,6 +71,12 @@ export function filterFoods(foods, { mealPeriod, category, answers = {}, exclude
       return left.random - right.random;
     })
     .map((entry) => entry.food);
+
+  if (matched.length <= MAX_RECOMMENDATIONS) {
+    return matched;
+  }
+
+  return shuffleList(matched).slice(0, MAX_RECOMMENDATIONS);
 }
 
 export function getFoodMeta(food) {
@@ -180,4 +188,13 @@ function normalizeTag(tag) {
     .toLowerCase()
     .replaceAll(/\s+/g, '-')
     .replaceAll('_', '-');
+}
+
+function shuffleList(items) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
 }

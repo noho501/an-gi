@@ -4,6 +4,8 @@ import { getFoodImage } from './foodVisuals.js';
 import { getMealPeriod, MEAL_PERIODS, detectMealPeriod, isValidMealPeriod } from './mealPeriods.js';
 import { getFoodMeta } from './recommendationEngine.js';
 import { createSwipeController } from './tinder.js';
+import { ReactionEngine } from './ReactionEngine.js';
+import { REACTION_STATES } from './reactionData.js';
 import {
   addHistory,
   clearHistory,
@@ -32,6 +34,7 @@ const state = {
   topController: null,
   stackCards: [],
   questionTimer: 0,
+  reactionEngine: new ReactionEngine(),
 };
 
 const refs = {
@@ -62,6 +65,9 @@ const refs = {
   swipeClose: qs('#btn-swipe-close'),
   historyButton: qs('#btn-history'),
   shuffleButton: qs('#btn-shuffle'),
+  selectButton: qs('#btn-select-food'),
+  foodBuddyEmoji: qs('#food-buddy-emoji'),
+  foodBuddyMessage: qs('#food-buddy-message'),
   historyBack: qs('#btn-history-back'),
   historyViewed: qs('#history-viewed'),
   historyEmpty: qs('#history-empty'),
@@ -70,6 +76,12 @@ const refs = {
   reshuffleButton: qs('#btn-reshuffle'),
   endHistoryButton: qs('#btn-end-history'),
   endFiltersButton: qs('#btn-end-filters'),
+  selectedPopup: qs('#selected-popup'),
+  selectedPopupFoodName: qs('#selected-popup-food-name'),
+  selectedPopupFoodImage: qs('#selected-popup-food-image'),
+  selectedPopupEmoji: qs('#selected-popup-emoji'),
+  selectedPopupMessage: qs('#selected-popup-message'),
+  closeSelectedPopupButton: qs('#btn-close-selected-popup'),
 };
 
 init();
@@ -110,10 +122,24 @@ function bindStaticEvents() {
   refs.swipeClose.addEventListener('click', handleSwipeClose);
   refs.historyButton.addEventListener('click', () => openHistory('screen-swipe'));
   refs.shuffleButton.addEventListener('click', handleAnotherSuggestion);
+  refs.selectButton.addEventListener('click', handleSelectFood);
   refs.historyBack.addEventListener('click', closeHistory);
   refs.reshuffleButton.addEventListener('click', handleAnotherSuggestion);
   refs.endHistoryButton.addEventListener('click', () => openHistory('screen-end'));
   refs.endFiltersButton.addEventListener('click', () => showScreen('screen-step1', { focus: '.category-card' }));
+  refs.closeSelectedPopupButton.addEventListener('click', () => closeSelectedPopup({ goHomeAfterClose: true }));
+
+  refs.selectedPopup.addEventListener('click', (event) => {
+    if (event.target.classList.contains('selected-popup__backdrop')) {
+      closeSelectedPopup({ goHomeAfterClose: true });
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && isSelectedPopupOpen()) {
+      closeSelectedPopup({ goHomeAfterClose: true });
+    }
+  });
 }
 
 function startFreshSession() {
@@ -131,10 +157,12 @@ function startFreshSession() {
   state.filteredIds = [];
   state.deckCursor = 0;
   state.endMode = 'done';
+  closeSelectedPopup();
 
   renderMealPeriodSelector();
   renderGreeting();
   markSelectedCategory();
+  setBuddyReaction(REACTION_STATES.WELCOME);
   showScreen('screen-home', { focus: '#btn-start' });
 }
 
@@ -350,11 +378,15 @@ function rebuildDeck(resetCursor) {
   state.endMode = state.filteredIds.length ? 'done' : 'empty';
 
   if (!state.filteredIds.length) {
+    setBuddyReaction(REACTION_STATES.EMPTY);
     showEnd('empty');
     return;
   }
 
-  renderSwipeScreen();
+  renderSwipeScreen({
+    reactionState: REACTION_STATES.SEARCH_COMPLETED,
+    reactionParams: { count: state.filteredIds.length },
+  });
 }
 
 function reshuffleCurrentDeck() {
@@ -382,11 +414,11 @@ function handleAnotherSuggestion() {
   advanceDeck('left');
 }
 
-function renderSwipeScreen() {
+function renderSwipeScreen(options = {}) {
   state.endMode = 'done';
   renderSwipeHeader();
   renderSwipeSummary();
-  renderStack();
+  renderStack(options);
   const fromScreen = state.currentScreen === 'screen-swipe' ? state.previousScreen : state.currentScreen;
   state.previousScreen = fromScreen || 'screen-step1';
   showScreen('screen-swipe', { focus: '.food-card.is-top' });
@@ -450,7 +482,7 @@ function createStackCards() {
   }
 }
 
-function renderStack() {
+function renderStack({ reactionState = '', reactionParams = {} } = {}) {
   destroyTopController();
 
   const foods = getVisibleFoods();
@@ -487,6 +519,11 @@ function renderStack() {
   });
 
   renderSwipeHeader();
+  if (reactionState) {
+    setBuddyReaction(reactionState, reactionParams);
+  } else {
+    renderBuddyByRemaining();
+  }
   persistSession('screen-swipe');
 }
 
@@ -539,6 +576,7 @@ function rotateStackCards() {
 function showEnd(mode) {
   state.endMode = mode;
   const mealPeriod = getMealPeriod(state.mealPeriod);
+  setBuddyReaction(REACTION_STATES.EMPTY);
 
   if (mode === 'empty') {
     refs.endTitle.textContent = `Chưa có món hợp ${mealPeriod.shortLabel.toLowerCase()}`;
@@ -668,9 +706,57 @@ function goHome() {
   state.deckCursor = 0;
   state.previousScreen = 'screen-home';
   state.endMode = 'done';
+  closeSelectedPopup();
+  setBuddyReaction(REACTION_STATES.WELCOME);
   markSelectedCategory();
   clearSession();
   showScreen('screen-home', { focus: '#btn-start' });
+}
+
+function handleSelectFood() {
+  const currentFood = getCurrentFood();
+  if (!currentFood) return;
+
+  const reaction = setBuddyReaction(REACTION_STATES.SELECTED);
+  refs.selectedPopupFoodName.textContent = currentFood.name;
+  refs.selectedPopupFoodImage.src = getFoodImage(currentFood);
+  refs.selectedPopupFoodImage.alt = `Ảnh món ${currentFood.name}`;
+  refs.selectedPopupEmoji.textContent = reaction.emoji;
+  refs.selectedPopupMessage.textContent = reaction.message || 'Chúc bạn ăn ngon miệng 😋';
+  refs.selectedPopup.classList.add('open');
+  refs.selectedPopup.setAttribute('aria-hidden', 'false');
+}
+
+function closeSelectedPopup({ goHomeAfterClose = false } = {}) {
+  refs.selectedPopup.classList.remove('open');
+  refs.selectedPopup.setAttribute('aria-hidden', 'true');
+
+  if (goHomeAfterClose) {
+    goHome();
+  }
+}
+
+function isSelectedPopupOpen() {
+  return refs.selectedPopup.classList.contains('open');
+}
+
+function getCurrentFood() {
+  const currentFoodId = state.filteredIds[state.deckCursor];
+  if (!currentFoodId) return null;
+  return state.foodsById.get(currentFoodId) || null;
+}
+
+function renderBuddyByRemaining() {
+  const remaining = Math.max(state.filteredIds.length - state.deckCursor, 0);
+  const reactionState = state.reactionEngine.resolveRemainingState(remaining);
+  setBuddyReaction(reactionState);
+}
+
+function setBuddyReaction(reactionState, params = {}) {
+  const reaction = state.reactionEngine.pick(reactionState, params);
+  refs.foodBuddyEmoji.textContent = reaction.emoji;
+  refs.foodBuddyMessage.textContent = reaction.message;
+  return reaction;
 }
 
 function destroyTopController() {
