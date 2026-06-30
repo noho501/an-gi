@@ -247,9 +247,10 @@ function changeMealPeriod(periodId) {
 
 function renderGreeting() {
   const mealPeriod = getMealPeriod(state.mealPeriod);
+  const welcomeReaction = state.reactionEngine.pick(REACTION_STATES.WELCOME);
   refs.greetingIcon.textContent = mealPeriod.icon;
   refs.greetingTitle.textContent = mealPeriod.greetingTitle;
-  refs.greetingSubtitle.textContent = mealPeriod.greetingSubtitle;
+  refs.greetingSubtitle.textContent = welcomeReaction.message || mealPeriod.greetingSubtitle;
   refs.greetingMeta.textContent = `${mealPeriod.label} · ${mealPeriod.timeLabel}`;
 }
 
