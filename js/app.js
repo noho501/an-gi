@@ -1,8 +1,8 @@
 import { getFoods } from './foodData.js';
 import { filterFoods, getAnswerSummary, getQuestionsForCategory } from './filter.js';
-import { getFoodImage, loadFoodImage, preloadFoodImages } from './foodVisuals.js';
+import { getFoodImage } from './foodVisuals.js';
 import { getMealPeriod, MEAL_PERIODS, detectMealPeriod, isValidMealPeriod } from './mealPeriods.js';
-import { getFoodMeta, getRelatedFoods } from './recommendationEngine.js';
+import { getFoodMeta } from './recommendationEngine.js';
 import { createSwipeController } from './tinder.js';
 import {
   addHistory,
@@ -12,11 +12,8 @@ import {
   clearRecentRecommendations,
   clearSession,
   getHistory,
-  getLiked,
   getTheme,
-  isLiked,
   setTheme,
-  toggleLiked,
 } from './storage.js';
 
 const state = {
@@ -32,7 +29,6 @@ const state = {
   filteredIds: [],
   deckCursor: 0,
   endMode: 'done',
-  detailFoodId: null,
   topController: null,
   stackCards: [],
   questionTimer: 0,
@@ -67,7 +63,6 @@ const refs = {
   historyButton: qs('#btn-history'),
   shuffleButton: qs('#btn-shuffle'),
   historyBack: qs('#btn-history-back'),
-  historyLiked: qs('#history-liked'),
   historyViewed: qs('#history-viewed'),
   historyEmpty: qs('#history-empty'),
   endTitle: qs('#end-title'),
@@ -75,21 +70,6 @@ const refs = {
   reshuffleButton: qs('#btn-reshuffle'),
   endHistoryButton: qs('#btn-end-history'),
   endFiltersButton: qs('#btn-end-filters'),
-  detailSheet: qs('#detail-sheet'),
-  detailOverlay: qs('#detail-overlay'),
-  detailClose: qs('#detail-close'),
-  detailImage: qs('#detail-img'),
-  detailName: qs('#detail-name'),
-  detailDesc: qs('#detail-desc'),
-  detailPrice: qs('#detail-price'),
-  detailCal: qs('#detail-cal'),
-  detailCat: qs('#detail-cat'),
-  detailStyle: qs('#detail-style'),
-  detailMeal: qs('#detail-meal'),
-  detailIngredients: qs('#detail-ingredients'),
-  detailRelated: qs('#detail-related'),
-  detailSimilar: qs('#detail-similar-btn'),
-  detailLike: qs('#detail-like-btn'),
 };
 
 init();
@@ -134,34 +114,6 @@ function bindStaticEvents() {
   refs.reshuffleButton.addEventListener('click', handleAnotherSuggestion);
   refs.endHistoryButton.addEventListener('click', () => openHistory('screen-end'));
   refs.endFiltersButton.addEventListener('click', () => showScreen('screen-step1', { focus: '.category-card' }));
-
-  refs.historyLiked.addEventListener('click', handleHistoryAction);
-  refs.historyViewed.addEventListener('click', handleHistoryAction);
-  refs.historyLiked.addEventListener('keydown', handleHistoryKeydown);
-  refs.historyViewed.addEventListener('keydown', handleHistoryKeydown);
-
-  refs.detailOverlay.addEventListener('click', closeDetail);
-  refs.detailSheet.addEventListener('click', (event) => {
-    if (event.target.closest('#detail-close')) {
-      event.preventDefault();
-      closeDetail();
-    }
-  });
-  refs.detailClose.addEventListener('click', closeDetail);
-  refs.detailLike.addEventListener('click', () => {
-    if (!state.detailFoodId) return;
-    setLikedState(state.detailFoodId);
-  });
-  refs.detailRelated.addEventListener('click', handleRelatedClick);
-  refs.detailSimilar.addEventListener('click', openSimilarFood);
-
-  bindDetailSwipeToClose();
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && refs.detailSheet.classList.contains('open')) {
-      closeDetail();
-    }
-  });
 }
 
 function startFreshSession() {
@@ -249,7 +201,6 @@ function changeMealPeriod(periodId) {
   renderMealPeriodSelector();
   renderGreeting();
   markSelectedCategory();
-  closeDetail();
 
   if (!state.currentCategory) {
     persistSession();
@@ -361,7 +312,6 @@ function handleSwipeBack() {
 
 function handleSwipeClose() {
   window.clearTimeout(state.questionTimer);
-  closeDetail();
   destroyTopController();
 
   const previousScreen = state.previousScreen || 'screen-step1';
@@ -472,13 +422,6 @@ function createStackCards() {
     card.className = 'food-card';
     card.hidden = true;
     card.innerHTML = `
-      <div class="hint-like">❤️ Thích</div>
-      <div class="hint-skip">✕ Bỏ qua</div>
-      <div class="card-favorite" aria-hidden="true">❤</div>
-      <div class="card-image-wrap">
-        <div class="card-image-skeleton"></div>
-        <img class="card-image" alt="" draggable="false" loading="lazy">
-      </div>
       <div class="card-body">
         <div class="card-meta">
           <span class="card-category-badge"></span>
@@ -488,30 +431,7 @@ function createStackCards() {
         <p class="card-desc"></p>
         <div class="card-tags"></div>
       </div>
-      <div class="card-actions" role="group" aria-label="Hành động với món ăn">
-        <button type="button" class="btn-action btn-skip" aria-label="Bỏ qua">❌</button>
-        <button type="button" class="btn-action btn-detail" aria-label="Xem chi tiết">📖</button>
-        <button type="button" class="btn-action btn-like" aria-label="Thích">❤️</button>
-      </div>
     `;
-
-    card.querySelector('.btn-skip').addEventListener('click', (event) => {
-      event.stopPropagation();
-      if (!card.classList.contains('is-top')) return;
-      state.topController?.swipe('left');
-    });
-
-    card.querySelector('.btn-like').addEventListener('click', (event) => {
-      event.stopPropagation();
-      if (!card.classList.contains('is-top')) return;
-      state.topController?.swipe('right');
-    });
-
-    card.querySelector('.btn-detail').addEventListener('click', (event) => {
-      event.stopPropagation();
-      if (!card.dataset.foodId) return;
-      openDetail(Number(card.dataset.foodId));
-    });
 
     card.addEventListener('keydown', (event) => {
       if (!card.classList.contains('is-top')) return;
@@ -522,9 +442,6 @@ function createStackCards() {
       } else if (event.key === 'ArrowRight') {
         event.preventDefault();
         state.topController?.swipe('right');
-      } else if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        if (card.dataset.foodId) openDetail(Number(card.dataset.foodId));
       }
     });
 
@@ -567,13 +484,7 @@ function renderStack() {
   state.topController = createSwipeController(topCard, {
     onLike: () => advanceDeck('right'),
     onSkip: () => advanceDeck('left'),
-    onDetail: () => openDetail(Number(topCard.dataset.foodId)),
   });
-
-  preloadFoodImages([
-    ...foods.slice(1),
-    state.foodsById.get(state.filteredIds[state.deckCursor + 3]),
-  ]);
 
   renderSwipeHeader();
   persistSession('screen-swipe');
@@ -581,7 +492,6 @@ function renderStack() {
 
 function hydrateCard(card, food, stackIndex) {
   const meta = getFoodMeta(food);
-  const image = card.querySelector('.card-image');
   const tagMarkup = meta.mealTags
     .slice(0, 3)
     .map((periodId) => `<span class="card-tag">${getMealPeriod(periodId).shortLabel}</span>`)
@@ -589,23 +499,12 @@ function hydrateCard(card, food, stackIndex) {
 
   card.dataset.foodId = String(food.id);
   card.style.setProperty('--stack-index', String(stackIndex));
-  card.classList.add('is-loading');
-  image.alt = food.name;
-  image.src = '';
   card.querySelector('.card-category-badge').textContent = `${food.category} · ${food.style}`;
   card.querySelector('.card-price').textContent = food.price;
   card.querySelector('.card-name').textContent = food.name;
   card.querySelector('.card-desc').textContent = food.description;
   card.querySelector('.card-tags').innerHTML = tagMarkup || `<span class="card-tag">${getMealPeriod(state.mealPeriod).shortLabel}</span>`;
-  card.querySelector('.btn-like').classList.toggle('liked', isLiked(food.id));
-  card.querySelector('.card-favorite').classList.toggle('visible', isLiked(food.id));
   card.setAttribute('aria-label', `${food.name}. ${food.category}. ${food.price}`);
-
-  loadFoodImage(food).then((src) => {
-    if (card.dataset.foodId !== String(food.id)) return;
-    image.src = src || getFoodImage(food);
-    card.classList.remove('is-loading');
-  });
 }
 
 function advanceDeck(direction) {
@@ -613,9 +512,6 @@ function advanceDeck(direction) {
   if (!currentFoodId) return;
 
   addHistory(currentFoodId);
-  if (direction === 'right') {
-    setLikedState(currentFoodId, true);
-  }
 
   state.deckCursor += 1;
   rotateStackCards();
@@ -684,22 +580,18 @@ function closeHistory() {
 }
 
 function renderHistoryLists() {
-  const likedFoods = getLiked()
-    .map((id) => state.foodsById.get(id))
-    .filter(Boolean);
   const historyFoods = getHistory()
     .map((id) => state.foodsById.get(id))
     .filter(Boolean);
 
-  refs.historyLiked.innerHTML = likedFoods.length ? likedFoods.map(renderHistoryCard).join('') : '';
   refs.historyViewed.innerHTML = historyFoods.length ? historyFoods.map(renderHistoryCard).join('') : '';
-  refs.historyEmpty.hidden = Boolean(likedFoods.length || historyFoods.length);
+  refs.historyEmpty.hidden = Boolean(historyFoods.length);
 }
 
 function renderHistoryCard(food) {
   const meta = getFoodMeta(food);
   return `
-    <article class="history-card" tabindex="0" data-food-id="${food.id}">
+    <article class="history-card" data-food-id="${food.id}">
       <img class="history-card__img" src="${getFoodImage(food)}" alt="${food.name}">
       <div class="history-card__content">
         <div class="history-card__meta">
@@ -710,172 +602,8 @@ function renderHistoryCard(food) {
         <p>${food.description}</p>
         <div class="history-card__tags">${meta.mealTags.map((periodId) => `<span class="history-tag">${getMealPeriod(periodId).shortLabel}</span>`).join('')}</div>
       </div>
-      <div class="history-card__actions">
-        <button type="button" class="history-btn" data-action="detail" data-food-id="${food.id}">Chi tiết</button>
-        <button type="button" class="history-btn history-btn--like${isLiked(food.id) ? ' liked' : ''}" data-action="like" data-food-id="${food.id}">
-          ${isLiked(food.id) ? 'Đã thích' : 'Thích'}
-        </button>
-      </div>
     </article>
   `;
-}
-
-function handleHistoryAction(event) {
-  const actionButton = event.target.closest('[data-action]');
-  const card = event.target.closest('.history-card');
-  const foodId = Number(actionButton?.dataset.foodId || card?.dataset.foodId);
-  if (!foodId) return;
-
-  if (actionButton?.dataset.action === 'like') {
-    setLikedState(foodId);
-    return;
-  }
-
-  openDetail(foodId);
-}
-
-function handleHistoryKeydown(event) {
-  if (event.key !== 'Enter' && event.key !== ' ') return;
-  const card = event.target.closest('.history-card');
-  if (!card) return;
-  event.preventDefault();
-  openDetail(Number(card.dataset.foodId));
-}
-
-function openDetail(foodId) {
-  const food = state.foodsById.get(foodId);
-  if (!food) return;
-
-  const meta = getFoodMeta(food);
-  const relatedFoods = getRelatedFoods(state.allFoods, food, {
-    mealPeriod: state.mealPeriod,
-    answers: state.answers,
-  });
-
-  state.detailFoodId = foodId;
-  refs.detailImage.src = getFoodImage(food);
-  refs.detailImage.alt = food.name;
-  refs.detailName.textContent = food.name;
-  refs.detailDesc.textContent = food.description;
-  refs.detailPrice.textContent = food.price;
-  refs.detailCal.textContent = `${food.calories} kcal`;
-  refs.detailCat.textContent = food.category;
-  refs.detailStyle.textContent = food.style;
-  refs.detailMeal.textContent = meta.mealTagLabels.join(' · ');
-  refs.detailIngredients.innerHTML = food.ingredients.map((item) => `<li>${item}</li>`).join('');
-  refs.detailRelated.innerHTML = relatedFoods.length
-    ? relatedFoods.map((item) => `<button type="button" class="related-card" data-food-id="${item.id}">${item.name}</button>`).join('')
-    : '<p class="related-empty">Chưa có món tương tự rõ ràng.</p>';
-  syncDetailLikeButton(foodId);
-  refs.detailSheet.classList.add('open');
-  refs.detailOverlay.classList.add('visible');
-  refs.detailOverlay.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('sheet-open');
-}
-
-function closeDetail() {
-  state.detailFoodId = null;
-  refs.detailSheet.classList.remove('open');
-  refs.detailOverlay.classList.remove('visible');
-  refs.detailOverlay.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('sheet-open');
-}
-
-function handleRelatedClick(event) {
-  const button = event.target.closest('[data-food-id]');
-  if (!button) return;
-  openDetail(Number(button.dataset.foodId));
-}
-
-function openSimilarFood() {
-  if (!state.detailFoodId) return;
-  const currentFood = state.foodsById.get(state.detailFoodId);
-  const similar = getRelatedFoods(state.allFoods, currentFood, {
-    mealPeriod: state.mealPeriod,
-    answers: state.answers,
-  }, 8);
-
-  const nextFood = similar[Math.floor(Math.random() * similar.length)];
-  if (!nextFood) return;
-  openDetail(nextFood.id);
-}
-
-function bindDetailSwipeToClose() {
-  let pointerId = null;
-  let startY = 0;
-  let currentY = 0;
-  let dragging = false;
-
-  refs.detailSheet.addEventListener('pointerdown', (event) => {
-    if (!event.target.closest('.sheet-handle, .sheet-header')) return;
-    dragging = true;
-    pointerId = event.pointerId;
-    startY = event.clientY;
-    currentY = 0;
-    refs.detailSheet.setPointerCapture(pointerId);
-    refs.detailSheet.classList.add('is-dragging');
-    refs.detailSheet.style.transition = 'none';
-  });
-
-  refs.detailSheet.addEventListener('pointermove', (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
-    currentY = Math.max(event.clientY - startY, 0);
-    refs.detailSheet.style.transform = `translateX(-50%) translateY(${currentY}px)`;
-  });
-
-  const finishSheetDrag = (event) => {
-    if (!dragging || event.pointerId !== pointerId) return;
-    dragging = false;
-    pointerId = null;
-    refs.detailSheet.classList.remove('is-dragging');
-    if (refs.detailSheet.hasPointerCapture(event.pointerId)) {
-      refs.detailSheet.releasePointerCapture(event.pointerId);
-    }
-
-    refs.detailSheet.style.transition = '';
-    refs.detailSheet.style.transform = '';
-
-    if (currentY > 90) {
-      closeDetail();
-    }
-  };
-
-  refs.detailSheet.addEventListener('pointerup', finishSheetDrag);
-  refs.detailSheet.addEventListener('pointercancel', finishSheetDrag);
-}
-
-function setLikedState(foodId, forceLike) {
-  if (!foodId) return;
-
-  if (typeof forceLike === 'boolean') {
-    const alreadyLiked = isLiked(foodId);
-    if (forceLike && !alreadyLiked) {
-      toggleLiked(foodId);
-    } else if (!forceLike && alreadyLiked) {
-      toggleLiked(foodId);
-    }
-  } else {
-    toggleLiked(foodId);
-  }
-
-  syncLikeUi(foodId);
-}
-
-function syncLikeUi(foodId) {
-  state.stackCards.forEach((card) => {
-    if (Number(card.dataset.foodId) !== foodId) return;
-    card.querySelector('.btn-like').classList.toggle('liked', isLiked(foodId));
-    card.querySelector('.card-favorite').classList.toggle('visible', isLiked(foodId));
-  });
-  syncDetailLikeButton(foodId);
-  renderHistoryLists();
-}
-
-function syncDetailLikeButton(foodId) {
-  if (state.detailFoodId !== foodId) return;
-  const liked = isLiked(foodId);
-  refs.detailLike.classList.toggle('liked', liked);
-  refs.detailLike.textContent = liked ? '❤️ Đã thích' : '🤍 Thích';
 }
 
 function handleThemeToggle() {
@@ -930,7 +658,6 @@ function showScreen(id, { focus } = {}) {
 
 function goHome() {
   window.clearTimeout(state.questionTimer);
-  closeDetail();
   destroyTopController();
   state.currentCategory = null;
   state.questionIndex = 0;
@@ -954,11 +681,6 @@ function getVisibleFoods() {
     .slice(state.deckCursor, state.deckCursor + 3)
     .map((id) => state.foodsById.get(id))
     .filter(Boolean);
-}
-
-function sanitizeIds(ids) {
-  if (!Array.isArray(ids)) return [];
-  return ids.filter((id) => state.foodsById.has(id));
 }
 
 function resetCardPosition(card) {

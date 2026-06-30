@@ -123,16 +123,11 @@
       <header class="screen-header">
         <button class="icon-btn" id="btn-history-back" aria-label="Quay lại">←</button>
         <div class="screen-header__center">
-          <span class="screen-header__eyebrow">Lưu lại</span>
-          <h2 class="screen-header__title">Lịch sử & yêu thích</h2>
+          <span class="screen-header__eyebrow">Đã xem</span>
+          <h2 class="screen-header__title">Lịch sử món ăn</h2>
         </div>
         <div class="top-bar-spacer" aria-hidden="true"></div>
       </header>
-
-      <div class="history-section">
-        <h3 class="history-section__title">❤️ Đã thích</h3>
-        <div id="history-liked" class="history-list"></div>
-      </div>
 
       <div class="history-section">
         <h3 class="history-section__title">🕘 Đã xem</h3>
@@ -157,56 +152,6 @@
         <button id="btn-end-history" class="btn-secondary">Xem lịch sử</button>
       </div>
     </section>
-  </div>
-
-  <div id="detail-overlay" aria-hidden="true"></div>
-
-  <div id="detail-sheet" role="dialog" aria-modal="true" aria-label="Chi tiết món ăn">
-    <div class="sheet-handle" aria-hidden="true"></div>
-
-    <div class="sheet-header">
-      <span class="sheet-title">Chi tiết</span>
-      <button id="detail-close" aria-label="Đóng">✕</button>
-    </div>
-
-    <img id="detail-img" class="sheet-img" src="" alt="" loading="lazy" />
-
-    <div class="sheet-body">
-      <h2 id="detail-name"></h2>
-      <p id="detail-desc"></p>
-
-      <div class="sheet-stats">
-        <div class="stat-card">
-          <div class="stat-label">Giá</div>
-          <div class="stat-value" id="detail-price"></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Calories</div>
-          <div class="stat-value" id="detail-cal"></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Danh mục</div>
-          <div class="stat-value" id="detail-cat"></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Kiểu</div>
-          <div class="stat-value" id="detail-style"></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Khung giờ</div>
-          <div class="stat-value" id="detail-meal"></div>
-        </div>
-      </div>
-
-      <div class="sheet-section-title">Nguyên liệu</div>
-      <ul id="detail-ingredients"></ul>
-
-      <div class="sheet-section-title">Món tương tự</div>
-      <div id="detail-related" class="related-list"></div>
-
-      <button id="detail-similar-btn" class="btn-secondary" aria-label="Gợi ý món tương tự">🎲 Gợi ý món tương tự</button>
-      <button id="detail-like-btn" aria-label="Thêm vào yêu thích">🤍 Thích</button>
-    </div>
   </div>
 
   <script type="module" src="js/app.js"></script>
