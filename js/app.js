@@ -496,15 +496,16 @@ function hydrateCard(card, food, stackIndex) {
     .slice(0, 3)
     .map((periodId) => `<span class="card-tag">${getMealPeriod(periodId).shortLabel}</span>`)
     .join('');
+  const topicTags = [...meta.tags].slice(0, 3).map((tag) => `#${tag}`).join(' · ');
 
   card.dataset.foodId = String(food.id);
   card.style.setProperty('--stack-index', String(stackIndex));
   card.querySelector('.card-category-badge').textContent = `${food.category} · ${food.style}`;
-  card.querySelector('.card-price').textContent = food.price;
+  card.querySelector('.card-price').textContent = topicTags || '#recommended';
   card.querySelector('.card-name').textContent = food.name;
-  card.querySelector('.card-desc').textContent = food.description;
+  card.querySelector('.card-desc').textContent = meta.mealTagLabels.join(' · ');
   card.querySelector('.card-tags').innerHTML = tagMarkup || `<span class="card-tag">${getMealPeriod(state.mealPeriod).shortLabel}</span>`;
-  card.setAttribute('aria-label', `${food.name}. ${food.category}. ${food.price}`);
+  card.setAttribute('aria-label', `${food.name}. ${food.category}. ${meta.mealTagLabels.join(', ')}`);
 }
 
 function advanceDeck(direction) {
@@ -590,16 +591,17 @@ function renderHistoryLists() {
 
 function renderHistoryCard(food) {
   const meta = getFoodMeta(food);
+  const topicTags = [...meta.tags].slice(0, 3).map((tag) => `#${tag}`).join(' · ');
   return `
     <article class="history-card" data-food-id="${food.id}">
       <img class="history-card__img" src="${getFoodImage(food)}" alt="${food.name}">
       <div class="history-card__content">
         <div class="history-card__meta">
           <span class="history-card__badge">${food.category}</span>
-          <span class="history-card__price">${food.price}</span>
+          <span class="history-card__price">${topicTags || '#recommended'}</span>
         </div>
         <h3>${food.name}</h3>
-        <p>${food.description}</p>
+        <p>${meta.mealTagLabels.join(' · ')}</p>
         <div class="history-card__tags">${meta.mealTags.map((periodId) => `<span class="history-tag">${getMealPeriod(periodId).shortLabel}</span>`).join('')}</div>
       </div>
     </article>
