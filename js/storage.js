@@ -47,6 +47,10 @@ export function clearHistory() {
   localStorage.removeItem(KEYS.HISTORY);
 }
 
+export function clearLiked() {
+  localStorage.removeItem(KEYS.LIKED);
+}
+
 export function getSession() {
   return readJSON(KEYS.SESSION, null);
 }
@@ -73,12 +77,20 @@ export function setMealPeriodPreference(periodId) {
   return periodId;
 }
 
+export function clearMealPeriodPreference() {
+  localStorage.removeItem(KEYS.MEAL_PERIOD);
+}
+
 export function getRecentRecommendations() {
   return readJSON(KEYS.RECENT_RECOMMENDATIONS, []);
 }
 
 export function setRecentRecommendations(ids) {
   return writeJSON(KEYS.RECENT_RECOMMENDATIONS, Array.isArray(ids) ? ids : []);
+}
+
+export function clearRecentRecommendations() {
+  localStorage.removeItem(KEYS.RECENT_RECOMMENDATIONS);
 }
 
 export function getTheme() {

@@ -6,17 +6,15 @@ import { getFoodMeta, getRelatedFoods } from './recommendationEngine.js';
 import { createSwipeController } from './tinder.js';
 import {
   addHistory,
+  clearHistory,
+  clearLiked,
+  clearMealPeriodPreference,
+  clearRecentRecommendations,
   clearSession,
   getHistory,
   getLiked,
-  getMealPeriodPreference,
-  getRecentRecommendations,
-  getSession,
   getTheme,
   isLiked,
-  setMealPeriodPreference,
-  setRecentRecommendations,
-  setSession,
   setTheme,
   toggleLiked,
 } from './storage.js';
@@ -102,7 +100,7 @@ async function init() {
   state.allFoods = await getFoods();
   state.foodsById = new Map(state.allFoods.map((food) => [food.id, food]));
   createStackCards();
-  restoreSession();
+  startFreshSession();
 }
 
 function bindStaticEvents() {
@@ -166,64 +164,26 @@ function bindStaticEvents() {
   });
 }
 
-function restoreSession() {
-  const session = getSession();
-  const storedMealPeriod = session?.mealPeriod || getMealPeriodPreference();
-  state.mealPeriod = isValidMealPeriod(storedMealPeriod) ? storedMealPeriod : detectMealPeriod();
+function startFreshSession() {
+  clearSession();
+  clearRecentRecommendations();
+  clearMealPeriodPreference();
+  clearHistory();
+  clearLiked();
+
+  state.currentCategory = null;
+  state.mealPeriod = detectMealPeriod();
+  state.mealPeriodMenuOpen = false;
+  state.questionIndex = 0;
+  state.answers = {};
+  state.filteredIds = [];
+  state.deckCursor = 0;
+  state.endMode = 'done';
 
   renderMealPeriodSelector();
   renderGreeting();
   markSelectedCategory();
-
-  if (!session) {
-    showScreen('screen-home', { focus: '#btn-start' });
-    return;
-  }
-
-  state.currentCategory = session.category || null;
-  state.questionIndex = Number.isInteger(session.questionIndex) ? session.questionIndex : 0;
-  state.answers = session.answers || {};
-  state.filteredIds = sanitizeIds(session.filteredIds?.length ? session.filteredIds : getRecentRecommendations());
-  state.deckCursor = clamp(session.deckCursor || 0, 0, state.filteredIds.length);
-  state.endMode = session.endMode || 'done';
-  if (!state.currentCategory) {
-    showScreen('screen-home', { focus: '#btn-start' });
-    return;
-  }
-
-  if (!state.filteredIds.length) {
-    rebuildDeck(false);
-    return;
-  }
-
-  switch (session.screen) {
-    case 'screen-step1':
-      showScreen('screen-step1', { focus: '.category-card' });
-      break;
-    case 'screen-questions':
-      showQuestions(state.questionIndex);
-      break;
-    case 'screen-history':
-      if (state.filteredIds.length && state.deckCursor < state.filteredIds.length) {
-        renderSwipeScreen();
-        openHistory('screen-swipe');
-      } else {
-        showEnd(state.endMode);
-        openHistory('screen-end');
-      }
-      break;
-    case 'screen-end':
-      showEnd(state.endMode);
-      break;
-    case 'screen-swipe':
-    default:
-      if (state.filteredIds.length && state.deckCursor < state.filteredIds.length) {
-        renderSwipeScreen();
-      } else {
-        showEnd(state.filteredIds.length ? 'done' : 'empty');
-      }
-      break;
-  }
+  showScreen('screen-home', { focus: '#btn-start' });
 }
 
 function renderMealPeriodSelector() {
@@ -286,7 +246,6 @@ function changeMealPeriod(periodId) {
 
   state.mealPeriod = periodId;
   state.mealPeriodMenuOpen = false;
-  setMealPeriodPreference(periodId);
   renderMealPeriodSelector();
   renderGreeting();
   markSelectedCategory();
@@ -439,7 +398,6 @@ function rebuildDeck(resetCursor) {
   state.filteredIds = foods.map((food) => food.id);
   state.deckCursor = resetCursor ? 0 : clamp(state.deckCursor, 0, state.filteredIds.length);
   state.endMode = state.filteredIds.length ? 'done' : 'empty';
-  setRecentRecommendations(state.filteredIds);
 
   if (!state.filteredIds.length) {
     showEnd('empty');
@@ -949,16 +907,7 @@ function markSelectedCategory() {
 }
 
 function persistSession(screen = state.currentScreen) {
-  setSession({
-    screen,
-    category: state.currentCategory,
-    mealPeriod: state.mealPeriod,
-    questionIndex: state.questionIndex,
-    answers: state.answers,
-    filteredIds: state.filteredIds,
-    deckCursor: state.deckCursor,
-    endMode: state.endMode,
-  });
+  return screen;
 }
 
 function showScreen(id, { focus } = {}) {
