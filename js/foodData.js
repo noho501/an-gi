@@ -2103,7 +2103,7 @@ export const foods = [
   },
   {
     "id": 128,
-    "name": "Bánh trung thu Bánh nướng , Bánh dẻo",
+    "name": "Bánh trung thu",
     "meal": [
       "lunch",
       "dinner"
@@ -2221,7 +2221,7 @@ export const foods = [
   },
   {
     "id": 135,
-    "name": "Mực khô Khô mực",
+    "name": "Khô mực",
     "meal": [
       "lunch",
       "dinner"
@@ -2237,7 +2237,7 @@ export const foods = [
   },
   {
     "id": 136,
-    "name": "Nộm sứa Gỏi sứa",
+    "name": "Gỏi sứa",
     "meal": [
       "lunch",
       "dinner"
@@ -3183,7 +3183,7 @@ export const foods = [
   },
   {
     "id": 194,
-    "name": "Soda sữa hột gà",
+    "name": "Sữa hột gà",
     "meal": [
       "breakfast",
       "lunch",
@@ -3438,7 +3438,7 @@ export const foods = [
   },
   {
     "id": 209,
-    "name": "Cellophane noodles miến , bún tàu , bún tào",
+    "name": "Miến",
     "meal": [
       "lunch",
       "dinner"
@@ -3455,7 +3455,7 @@ export const foods = [
   },
   {
     "id": 210,
-    "name": "Mì or Súp mì",
+    "name": "Mì",
     "meal": [
       "lunch",
       "dinner"
@@ -3472,7 +3472,7 @@ export const foods = [
   },
   {
     "id": 211,
-    "name": "Rice noodles bánh canh , bánh phở",
+    "name": "Bánh canh",
     "meal": [
       "breakfast",
       "lunch",
@@ -3493,7 +3493,7 @@ export const foods = [
   },
   {
     "id": 212,
-    "name": "Rice vermicelli bún",
+    "name": "Bún",
     "meal": [
       "lunch",
       "dinner"
@@ -3674,7 +3674,7 @@ export const foods = [
   },
   {
     "id": 223,
-    "name": "Chả giò or Nem rán",
+    "name": "Chả giò",
     "meal": [
       "lunch",
       "dinner",
@@ -3944,7 +3944,7 @@ export const foods = [
   },
   {
     "id": 239,
-    "name": "Balut trứng vịt lộn or hột vịt lộn",
+    "name": "Trứng vịt lộn",
     "meal": [
       "lunch",
       "dinner"
@@ -4042,7 +4042,7 @@ export const foods = [
   },
   {
     "id": 245,
-    "name": "Black pudding dồi tiết' or dồi huyết",
+    "name": "Dồi huyết",
     "meal": [
       "lunch",
       "dinner",
@@ -4270,7 +4270,7 @@ export const foods = [
   },
   {
     "id": 259,
-    "name": "Tapioca pudding chè chuối",
+    "name": "Chè chuối",
     "meal": [
       "lunch",
       "dinner",
@@ -4288,7 +4288,7 @@ export const foods = [
   },
   {
     "id": 260,
-    "name": "Taro cake bánh khoai môn",
+    "name": "Bánh khoai môn",
     "meal": [
       "lunch",
       "dinner",
@@ -4306,7 +4306,7 @@ export const foods = [
   },
   {
     "id": 261,
-    "name": "Thạch rau câu or sương sa",
+    "name": "Thạch rau câu",
     "meal": [
       "lunch",
       "dinner"
@@ -4453,7 +4453,7 @@ export const foods = [
   },
   {
     "id": 272,
-    "name": "Soda sữa hột gà",
+    "name": "Sữa hột gà",
     "meal": [
       "breakfast",
       "lunch",
