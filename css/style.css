@@ -413,6 +413,113 @@ ul {
   box-shadow: none;
 }
 
+#btn-shuffle,
+#btn-reshuffle {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  color: #fff;
+  border: 0;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  box-shadow: var(--card-shadow);
+  animation: shuffle-cta-breathe 2.6s ease-in-out infinite;
+}
+
+#btn-shuffle::before,
+#btn-reshuffle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, transparent 20%, var(--surface-hover) 50%, transparent 80%);
+  transform: translateX(-130%);
+  animation: shuffle-cta-sheen 2.6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#btn-shuffle::after,
+#btn-reshuffle::after {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, var(--surface-hover) 0%, transparent 62%);
+  opacity: 0;
+  transform: scale(0.25);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#btn-shuffle,
+#btn-reshuffle,
+#btn-shuffle::before,
+#btn-reshuffle::before {
+  will-change: transform;
+}
+
+#btn-shuffle:hover,
+#btn-reshuffle:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+#btn-shuffle:active,
+#btn-reshuffle:active {
+  transform: scale(0.96);
+  animation: shuffle-cta-press 260ms ease-out;
+}
+
+#btn-shuffle:active::after,
+#btn-reshuffle:active::after {
+  animation: shuffle-cta-tap 320ms ease-out;
+}
+
+@keyframes shuffle-cta-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow: var(--card-shadow);
+  }
+  50% {
+    transform: translateY(-1px);
+    box-shadow: var(--card-shadow);
+  }
+}
+
+@keyframes shuffle-cta-sheen {
+  0%,
+  30% {
+    transform: translateX(-130%);
+  }
+  60%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes shuffle-cta-press {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(0.92);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes shuffle-cta-tap {
+  0% {
+    opacity: 0.36;
+    transform: scale(0.25);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
 .step-header {
   padding: 8px 4px 20px;
   text-align: center;
